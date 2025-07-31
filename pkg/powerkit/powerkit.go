@@ -7,8 +7,8 @@ import (
 	"log"
 	"math"
 
-	"github.com/peterneutron/go-iokit-powertelemetry/internal/iokit"
-	"github.com/peterneutron/go-iokit-powertelemetry/internal/smc"
+	"github.com/peterneutron/powerkit-go/internal/iokit"
+	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
 // GetBatteryInfo is the primary public entrypoint to the library.

@@ -1,3 +1,3 @@
-module github.com/peterneutron/go-iokit-powertelemetry
+module github.com/peterneutron/powerkit-go
 
 go 1.24.5

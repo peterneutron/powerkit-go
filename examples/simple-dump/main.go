@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/peterneutron/go-iokit-powertelemetry/pkg/power"
+	"github.com/peterneutron/powerkit-go/pkg/power"
 )
 
 func main() {
