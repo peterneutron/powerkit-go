@@ -41,7 +41,7 @@ func calculateDerivedMetrics(info *BatteryInfo) {
 	// IOKit Amperage is negative on discharge, so this product will be correctly negative.
 	iokitBatteryPower := info.Battery.Voltage * info.Battery.Amperage
 	// SystemPower is the absolute difference.
-	iokitSystemPower := math.Abs(iokitBatteryPower - iokitACPower)
+	iokitSystemPower := math.Abs(iokitACPower - iokitBatteryPower)
 
 	info.Calculations.IOKit = PowerCalculation{
 		ACPower:      truncate(iokitACPower),
@@ -56,7 +56,7 @@ func calculateDerivedMetrics(info *BatteryInfo) {
 		// SMC Amperage is also negative on discharge, so this product is also correctly negative.
 		smcBatteryPower := info.SMC.BatteryVoltage * info.SMC.BatteryAmperage
 		// SystemPower is the absolute difference.
-		smcSystemPower := math.Abs(smcBatteryPower - smcACPower)
+		smcSystemPower := math.Abs(smcACPower - smcBatteryPower)
 
 		info.Calculations.SMC = PowerCalculation{
 			ACPower:      truncate(smcACPower),
@@ -64,29 +64,4 @@ func calculateDerivedMetrics(info *BatteryInfo) {
 			SystemPower:  truncate(smcSystemPower),
 		}
 	}
-}
-
-// --- Helper Functions ---
-
-// Find min/max in a slice
-func findMinMax(a []int) (min int, max int) {
-	if len(a) == 0 {
-		return 0, 0
-	}
-	min = a[0]
-	max = a[0]
-	for _, value := range a {
-		if value < min {
-			min = value
-		}
-		if value > max {
-			max = value
-		}
-	}
-	return min, max
-}
-
-// Truncate rounds a float down to two decimal places.
-func truncate(f float64) float64 {
-	return math.Trunc(f*100) / 100
 }
