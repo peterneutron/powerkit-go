@@ -1,7 +1,7 @@
 //go:build darwin
 // +build darwin
 
-package power
+package powerkit
 
 // BatteryInfo holds a comprehensive snapshot of all data points.
 // It separates data from its source (IOKit vs. SMC) for full transparency.

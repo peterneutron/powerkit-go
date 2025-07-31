@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/peterneutron/powerkit-go/pkg/power"
+	"github.com/peterneutron/powerkit-go/pkg/powerkit"
 )
 
 func main() {
-	info, err := power.GetBatteryInfo()
+	info, err := powerkit.GetBatteryInfo()
 	if err != nil {
 		log.Fatalf("Error getting battery info: %v", err)
 	}

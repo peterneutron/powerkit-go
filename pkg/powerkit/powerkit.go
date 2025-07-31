@@ -1,7 +1,7 @@
 //go:build darwin
 // +build darwin
 
-package power
+package powerkit
 
 import (
 	"log"
