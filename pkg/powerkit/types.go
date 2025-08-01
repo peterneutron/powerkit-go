@@ -81,7 +81,6 @@ type IOKitCalculations struct {
 type SMCData struct {
 	Battery      SMCBattery      `json:"Battery"`
 	Adapter      SMCAdapter      `json:"Adapter"`
-	System       SMCSystem       `json:"System"`
 	Calculations SMCCalculations `json:"Calculations"`
 }
 
@@ -89,19 +88,12 @@ type SMCData struct {
 type SMCBattery struct {
 	Voltage  float64 `json:"Voltage"`
 	Amperage float64 `json:"Amperage"`
-	Power    float64 `json:"Power"`
 }
 
 // SMCAdapter holds raw adapter-related sensor readings from the SMC.
 type SMCAdapter struct {
 	InputVoltage  float64 `json:"InputVoltage"`
 	InputAmperage float64 `json:"InputAmperage"`
-	InputPower    float64 `json:"InputPower"`
-}
-
-// SMCSystem holds raw system-wide sensor readings from the SMC.
-type SMCSystem struct {
-	Power float64 `json:"Power"`
 }
 
 // SMCCalculations holds power metrics derived purely from SMC sensor readings.

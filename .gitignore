@@ -14,4 +14,6 @@
 # IDE/Editor folders
 .vscode/
 .idea/
-#powerkit-cli
+
+# Compiled binaries
+/powerkit-cli

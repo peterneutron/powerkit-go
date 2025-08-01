@@ -106,7 +106,6 @@ func newSMCData(results map[string]float64) *SMCData {
 	data := &SMCData{
 		Battery: SMCBattery{},
 		Adapter: SMCAdapter{},
-		System:  SMCSystem{},
 	}
 
 	if val, ok := results["VD0R"]; ok {
@@ -115,20 +114,11 @@ func newSMCData(results map[string]float64) *SMCData {
 	if val, ok := results["ID0R"]; ok {
 		data.Adapter.InputAmperage = truncate(val)
 	}
-	if val, ok := results["PDTR"]; ok {
-		data.Adapter.InputPower = truncate(val)
-	}
 	if val, ok := results["B0AV"]; ok {
 		data.Battery.Voltage = truncate(val / 1000.0)
 	}
 	if val, ok := results["B0AC"]; ok {
 		data.Battery.Amperage = truncate(val / 1000.0)
-	}
-	if val, ok := results["PPBR"]; ok {
-		data.Battery.Power = truncate(val)
-	}
-	if val, ok := results["PSTR"]; ok {
-		data.System.Power = truncate(val)
 	}
 	return data
 }
