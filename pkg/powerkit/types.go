@@ -102,3 +102,12 @@ type SMCCalculations struct {
 	BatteryPower float64 `json:"BatteryPower"`
 	SystemPower  float64 `json:"SystemPower"`
 }
+
+// RawSMCValue holds the raw, undecoded result of a custom SMC query.
+// It is the responsibility of the caller to decode the Data bytes
+// based on the DataType and DataSize.
+type RawSMCValue struct {
+	DataType string `json:"DataType"`
+	DataSize int    `json:"DataSize"`
+	Data     []byte `json:"Data"` // This will be base64-encoded in JSON for readability
+}

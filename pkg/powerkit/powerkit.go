@@ -62,3 +62,28 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 
 	return info, nil
 }
+
+// GetRawSMCValues allows advanced users to query custom SMC keys.
+// It returns a map of raw, undecoded values. The caller is responsible for
+// interpreting the bytes in the 'Data' field based on the 'DataType'.
+func GetRawSMCValues(keys []string) (map[string]RawSMCValue, error) {
+	// Call the new raw fetcher in our internal smc package
+	rawResults, err := smc.FetchRawData(keys)
+	if err != nil {
+		return nil, err
+	}
+
+	// The internal smc.RawSMCValue struct is identical to our public one,
+	// but it's a best practice to convert between them to keep the packages decoupled.
+	// This also makes it easy to change the public API later without breaking the internal code.
+	results := make(map[string]RawSMCValue)
+	for key, val := range rawResults {
+		results[key] = RawSMCValue{
+			DataType: val.DataType,
+			DataSize: val.DataSize,
+			Data:     val.Data,
+		}
+	}
+
+	return results, nil
+}

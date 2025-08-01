@@ -55,6 +55,15 @@ typedef struct {
 // --- C Helper Function Declarations ---
 kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value);
 
+// This is the function for the raw/generic API.
+kern_return_t smc_read_key_raw(
+    io_connect_t conn,
+    const char* key,
+    char* dataTypeResult,
+    unsigned char* bytesResult,
+    UInt32* dataSizeResult
+);
+
 // --- SMC C-Side Implementation ---
 static UInt32 str_to_key(const char *str) {
     return (UInt32)((str[0] << 24) | (str[1] << 16) | (str[2] << 8) | str[3]);
@@ -159,6 +168,39 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
 
     return KERN_SUCCESS;
 }
+
+    // --- NEW GENERIC C FUNCTION IMPLEMENTATION ---
+    kern_return_t smc_read_key_raw(
+    io_connect_t conn,
+    const char* key,
+    char* dataTypeResult,
+    unsigned char* bytesResult,
+    UInt32* dataSizeResult
+) {
+    SMCKeyData_t input;
+    SMCKeyData_t output;
+    size_t structSize = sizeof(SMCKeyData_t);
+
+    memset(&input, 0, structSize);
+    memset(&output, 0, structSize);
+    input.key = str_to_key(key);
+    input.data8 = SMC_CMD_READ_KEYINFO;
+    kern_return_t kr = smc_call(conn, &input, &output);
+    if (kr != KERN_SUCCESS || output.result != 0) return KERN_FAILURE;
+
+    input.keyInfo = output.keyInfo;
+    input.data8 = SMC_CMD_READ_BYTES;
+    memset(&output, 0, structSize);
+    kr = smc_call(conn, &input, &output);
+    if (kr != KERN_SUCCESS || output.result != 0) return KERN_FAILURE;
+
+    // Export the raw results instead of decoding
+    key_to_str(input.keyInfo.dataType, dataTypeResult);
+    *dataSizeResult = input.keyInfo.dataSize;
+    memcpy(bytesResult, output.bytes, *dataSizeResult);
+
+    return KERN_SUCCESS;
+}
 */
 import "C"
 
@@ -166,6 +208,15 @@ import (
 	"fmt"
 	"unsafe"
 )
+
+// RawSMCValue holds the raw, undecoded result of an SMC query.
+// It is the responsibility of the caller to decode the Data bytes
+// based on the DataType and DataSize.
+type RawSMCValue struct {
+	DataType string
+	DataSize int
+	Data     []byte
+}
 
 // FetchData retrieves a map of SMC keys and their float values.
 func FetchData(keys []string) (map[string]float64, error) {
@@ -193,5 +244,53 @@ func FetchData(keys []string) (map[string]float64, error) {
 		return nil, fmt.Errorf("SMC read succeeded but no keys returned values")
 	}
 
+	return results, nil
+}
+
+// FetchRawData retrieves the raw, undecoded metadata and byte values for a given
+// list of SMC keys. This is an advanced function for users who want to perform
+// their own decoding.
+func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
+	var conn C.io_connect_t
+	kr := C.smc_open(&conn)
+	if kr != C.KERN_SUCCESS {
+		return nil, fmt.Errorf("failed to open SMC connection: %d", kr)
+	}
+	defer C.smc_close(conn)
+
+	results := make(map[string]RawSMCValue)
+	for _, key := range keys {
+		ckey := C.CString(key)
+		defer C.free(unsafe.Pointer(ckey))
+
+		var dataTypeResult [5]C.char
+		var bytesResult [32]C.uchar
+		var dataSizeResult C.UInt32
+
+		kr = C.smc_read_key_raw(
+			conn,
+			ckey,
+			&dataTypeResult[0],
+			&bytesResult[0],
+			&dataSizeResult,
+		)
+
+		if kr == C.KERN_SUCCESS {
+			dataSize := int(dataSizeResult)
+			// Make a copy of the data from the C buffer into a new Go slice
+			goBytes := C.GoBytes(unsafe.Pointer(&bytesResult[0]), C.int(dataSize))
+
+			results[key] = RawSMCValue{
+				DataType: C.GoString(&dataTypeResult[0]),
+				DataSize: dataSize,
+				Data:     goBytes,
+			}
+		}
+		// We can choose to ignore errors for single keys and just not add them to the map.
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("SMC raw read failed for all requested keys")
+	}
 	return results, nil
 }
