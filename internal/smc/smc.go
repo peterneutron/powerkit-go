@@ -13,6 +13,7 @@ package smc
 
 #define KERNEL_INDEX_SMC 2
 #define SMC_CMD_READ_BYTES 5
+#define SMC_CMD_WRITE_BYTES 4
 #define SMC_CMD_READ_KEYINFO 9
 
 // --- Data Structures ---
@@ -55,13 +56,21 @@ typedef struct {
 // --- C Helper Function Declarations ---
 kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value);
 
-// This is the function for the raw/generic API.
+// This is the read function for the raw/generic API.
 kern_return_t smc_read_key_raw(
     io_connect_t conn,
     const char* key,
     char* dataTypeResult,
     unsigned char* bytesResult,
     UInt32* dataSizeResult
+);
+
+// This is the write function for the non-generic API
+kern_return_t smc_write_key(
+    io_connect_t conn,
+    const char* key,
+    const unsigned char* bytes,
+    UInt32 dataSize
 );
 
 // --- SMC C-Side Implementation ---
@@ -169,7 +178,8 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
     return KERN_SUCCESS;
 }
 
-    // --- NEW GENERIC C FUNCTION IMPLEMENTATION ---
+    // New Generic C Read Function
+    // This function reads raw bytes of the given SMC key.
     kern_return_t smc_read_key_raw(
     io_connect_t conn,
     const char* key,
@@ -201,6 +211,50 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
 
     return KERN_SUCCESS;
 }
+
+    // Generic C Write Function
+    // This function takes raw bytes and writes them to the given SMC key.
+    kern_return_t smc_write_key(
+    io_connect_t conn,
+    const char* key,
+    const unsigned char* bytesToWrite,
+    UInt32 dataSize
+) {
+    SMCKeyData_t input;
+    SMCKeyData_t output;
+    size_t structSize = sizeof(SMCKeyData_t);
+
+    // First, we MUST read the key's metadata to ensure we're writing
+    // with the correct data size and type.
+    memset(&input, 0, structSize);
+    memset(&output, 0, structSize);
+    input.key = str_to_key(key);
+    input.data8 = SMC_CMD_READ_KEYINFO;
+    kern_return_t kr = smc_call(conn, &input, &output);
+    if (kr != KERN_SUCCESS || output.result != 0) {
+        return KERN_FAILURE; // Key not found or other read error
+    }
+
+    // Check if the provided data size matches what the key expects.
+    if (dataSize != output.keyInfo.dataSize) {
+        return kIOReturnBadArgument; // Mismatched data size
+    }
+
+    // Now, prepare the input struct for the WRITE command.
+    input.keyInfo = output.keyInfo;
+    input.data8 = SMC_CMD_WRITE_BYTES;
+    memcpy(input.bytes, bytesToWrite, dataSize);
+
+    // Perform the write call.
+    memset(&output, 0, structSize);
+    kr = smc_call(conn, &input, &output);
+    if (kr != KERN_SUCCESS || output.result != 0) {
+        return KERN_FAILURE; // Write command failed
+    }
+
+    return KERN_SUCCESS;
+}
+
 */
 import "C"
 
@@ -293,4 +347,34 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 		return nil, fmt.Errorf("SMC raw read failed for all requested keys")
 	}
 	return results, nil
+}
+
+// writeData is a private, powerful function that writes raw bytes to a given SMC key.
+// It is unexported to prevent direct use from outside the powerkit library.
+// The public API will provide safe, specific wrappers around this function.
+func WriteData(key string, data []byte) error {
+	var conn C.io_connect_t
+	kr := C.smc_open(&conn)
+	if kr != C.KERN_SUCCESS {
+		return fmt.Errorf("failed to open SMC connection: %d", kr)
+	}
+	defer C.smc_close(conn)
+
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+
+	// Get a C pointer to the Go byte slice's underlying data.
+	cBytes := (*C.uchar)(unsafe.Pointer(&data[0]))
+	cDataSize := C.UInt32(len(data))
+
+	kr = C.smc_write_key(conn, ckey, cBytes, cDataSize)
+
+	if kr != C.KERN_SUCCESS {
+		if kr == C.kIOReturnBadArgument {
+			return fmt.Errorf("SMC write failed for key '%s': provided data size does not match key's expected size", key)
+		}
+		return fmt.Errorf("SMC write failed for key '%s' with kern_return code: %d", key, kr)
+	}
+
+	return nil
 }

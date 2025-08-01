@@ -87,3 +87,56 @@ func GetRawSMCValues(keys []string) (map[string]RawSMCValue, error) {
 
 	return results, nil
 }
+
+// --- Public Write API ---
+
+// MagsafeColor defines the possible states for the charging LED.
+type MagsafeColor int
+
+const (
+	// LEDOff represents the 'Off' state for the Magsafe LED.
+	LEDOff MagsafeColor = iota // 0
+	// LEDAmber represents the 'Amber' (charging) state for the Magsafe LED.
+	LEDAmber // 1
+	// LEDGreen represents the 'Green' (fully charged) state for the Magsafe LED.
+	LEDGreen // 2
+)
+
+// SetMagsafeLEDColor sets the color of the Magsafe charging LED.
+func SetMagsafeLEDColor(color MagsafeColor) error {
+	// The ACLC key expects two bytes:
+	// Byte 0: LED ID (0 for Magsafe)
+	// Byte 1: Color code (0=Off, 1=Amber, 2=Green)
+	var colorCode byte
+	switch color {
+	case LEDAmber:
+		colorCode = 0x01
+	case LEDGreen:
+		colorCode = 0x02
+	case LEDOff:
+		colorCode = 0x00
+	default:
+		return fmt.Errorf("invalid MagsafeColor provided: %d", color)
+	}
+
+	// Prepare the 2-byte slice to write to the SMC.
+	data := []byte{0x00, colorCode}
+
+	// Call the internal, generic write function.
+	return smc.WriteData("ACLC", data)
+}
+
+// EnableChargeInhibit prevents the battery from charging even when the AC
+// adapter is connected. This is useful for preserving battery health.
+func EnableChargeInhibit() error {
+	// The CHTE key expects a single byte: 0x08 to enable inhibit.
+	data := []byte{0x08}
+	return smc.WriteData("CHTE", data)
+}
+
+// DisableChargeInhibit allows the battery to resume normal charging.
+func DisableChargeInhibit() error {
+	// The CHTE key expects a single byte: 0x00 to disable inhibit.
+	data := []byte{0x00}
+	return smc.WriteData("CHTE", data)
+}
