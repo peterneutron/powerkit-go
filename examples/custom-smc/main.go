@@ -48,6 +48,5 @@ func main() {
 	}
 
 	fmt.Println("\nThis demonstrates how a user can access the raw sensor data directly,")
-	fmt.Println("bypassing the library's internal calculations, to see the hardware's")
-	fmt.Println("potentially inconsistent 'source of truth'.")
+	fmt.Println("bypassing the library's internal calculations.")
 }
