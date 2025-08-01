@@ -3,6 +3,13 @@
 
 package powerkit
 
+// FetchOptions allows the user to specify which data sources to query.
+// By default, both sources are enabled.
+type FetchOptions struct {
+	QueryIOKit bool
+	QuerySMC   bool
+}
+
 // BatteryInfo holds a comprehensive snapshot of all data points.
 // It separates data from its source (IOKit vs. SMC) for full transparency.
 type BatteryInfo struct {
