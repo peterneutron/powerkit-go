@@ -2,6 +2,7 @@
 package powerkit
 
 import (
+	"bytes"
 	"math"
 
 	"github.com/peterneutron/powerkit-go/internal/iokit"
@@ -35,24 +36,44 @@ func findMinMax(a []int) (min int, max int) {
 
 // newSMCData is a private helper that transforms raw SMC key-value data
 // into the public SMCData struct.
-func newSMCData(results map[string]float64) *SMCData {
+func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSMCValue) *SMCData {
 	data := &SMCData{
+		State:   SMCState{},
 		Battery: SMCBattery{},
 		Adapter: SMCAdapter{},
 	}
 
-	if val, ok := results[smc.KeyDCInVoltage]; ok {
+	if val, ok := floatResults[smc.KeyDCInVoltage]; ok {
 		data.Adapter.InputVoltage = truncate(val)
 	}
-	if val, ok := results[smc.KeyDCInCurrent]; ok {
+	if val, ok := floatResults[smc.KeyDCInCurrent]; ok {
 		data.Adapter.InputAmperage = truncate(val)
 	}
-	if val, ok := results[smc.KeyBatteryVoltage]; ok {
+	if val, ok := floatResults[smc.KeyBatteryVoltage]; ok {
 		data.Battery.Voltage = truncate(val / 1000.0)
 	}
-	if val, ok := results[smc.KeyBatteryCurrent]; ok {
+	if val, ok := floatResults[smc.KeyBatteryCurrent]; ok {
 		data.Battery.Amperage = truncate(val / 1000.0)
 	}
+
+	// --- 2. NEW: Populate the State struct from the rawResults ---
+
+	// Check for the CHTE key (IsChargerInhibited)
+	if chteVal, ok := rawResults[smc.KeyChargeInhibit]; ok {
+		// Assuming 'enabled' is a non-zero value. We need to confirm the exact byte.
+		// Let's assume non-zero means inhibited for now.
+		if len(chteVal.Data) > 0 && chteVal.Data[0] != 0x00 {
+			data.State.IsChargerInhibited = true
+		}
+	}
+
+	// Check for the CHIE key (IsAdapterDisabled)
+	if chieVal, ok := rawResults[smc.KeyChargerControl]; ok {
+		// We know from our write functions that 0x08 means disabled.
+		disabledBytes := []byte{0x08}
+		data.State.IsAdapterDisabled = bytes.Equal(chieVal.Data, disabledBytes)
+	}
+
 	return data
 }
 
@@ -60,7 +81,7 @@ func newSMCData(results map[string]float64) *SMCData {
 // into the public IOKitData struct. This is its only job.
 func newIOKitData(raw *iokit.RawData) *IOKitData {
 	return &IOKitData{
-		State: State{
+		State: IOKitState{
 			IsCharging:   raw.IsCharging,
 			IsConnected:  raw.IsConnected,
 			FullyCharged: raw.IsFullyCharged,

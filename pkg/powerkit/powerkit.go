@@ -45,15 +45,18 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 
 	// Phase 2: Fetch and populate SMC data if requested.
 	if options.QuerySMC {
-		smcResults, err := smc.FetchData(smc.KeysToRead)
-		if err != nil {
+		// 1. Fetch the standard float values
+		smcFloatResults, err := smc.FetchData(smc.KeysToRead)
+		// 2. Fetch the specific raw values we need for the state
+		smcRawResults, rawErr := smc.FetchRawData([]string{smc.KeyChargeInhibit, smc.KeyChargerControl})
+		if err != nil || rawErr != nil {
 			if !options.QueryIOKit {
 				return nil, fmt.Errorf("failed to fetch required SMC data: %w", err)
 			}
 			log.Printf("Warning: could not fetch SMC data: %v", err)
 		} else {
 			// The logic is clean here too.
-			info.SMC = newSMCData(smcResults)
+			info.SMC = newSMCData(smcFloatResults, smcRawResults)
 		}
 	}
 

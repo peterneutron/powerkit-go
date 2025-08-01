@@ -25,14 +25,14 @@ type SystemInfo struct {
 
 // IOKitData is a container for all data and calculations derived from the IOKit registry.
 type IOKitData struct {
-	State        State             `json:"State"`
+	State        IOKitState        `json:"State"`
 	Battery      IOKitBattery      `json:"Battery"`
 	Adapter      IOKitAdapter      `json:"Adapter"`
 	Calculations IOKitCalculations `json:"Calculations"`
 }
 
 // State holds booleans describing the current charging status, sourced from IOKit.
-type State struct {
+type IOKitState struct {
 	IsCharging   bool `json:"IsCharging"`
 	IsConnected  bool `json:"IsConnected"`
 	FullyCharged bool `json:"FullyCharged"`
@@ -79,9 +79,15 @@ type IOKitCalculations struct {
 
 // SMCData is a container for all raw sensor data and calculations derived from the SMC.
 type SMCData struct {
+	State        SMCState        `json:"State"`
 	Battery      SMCBattery      `json:"Battery"`
 	Adapter      SMCAdapter      `json:"Adapter"`
 	Calculations SMCCalculations `json:"Calculations"`
+}
+
+type SMCState struct {
+	IsAdapterDisabled  bool `json:"IsAdapterDisabled"`
+	IsChargerInhibited bool `json:"IsChargerInhibited"`
 }
 
 // SMCBattery holds raw battery-related sensor readings from the SMC.
