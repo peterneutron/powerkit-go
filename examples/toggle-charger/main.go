@@ -14,8 +14,8 @@ import (
 
 func main() {
 	// --- 1. Define the Key and Expected "Disabled" State ---
-	chargerControlKey := smc.KeyChargerControl
-	disabledBytes := []byte{0x08} // This is the byte sequence for "charger disabled"
+	chargerControlKey := smc.KeyAdapterControl
+	disabledBytes := []byte{0x01} // This is the byte sequence for "charger disabled"
 
 	// --- 2. Read the Current State from the SMC ---
 	fmt.Printf("Reading current state of SMC key '%s'...\n", chargerControlKey)

@@ -16,8 +16,8 @@ import (
 func main() {
 	// --- 1. Define the Key and Expected Values using Constants ---
 	// Using constants from the smc package makes this code safe from typos.
-	chargeInhibitKey := smc.KeyChargeInhibit
-	enabledBytes := []byte{0x08} // The byte sequence for "inhibit enabled" (charging disabled)
+	chargeInhibitKey := smc.KeyChargeControl
+	enabledBytes := []byte{0x00} // The byte sequence for "inhibit enabled" (charging disabled)
 
 	// --- 2. Read the Current State ---
 	fmt.Printf("Reading current state of SMC key '%s'...\n", chargeInhibitKey)

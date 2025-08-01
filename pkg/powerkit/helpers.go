@@ -58,20 +58,19 @@ func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSM
 
 	// --- 2. NEW: Populate the State struct from the rawResults ---
 
-	// Check for the CHTE key (IsChargerInhibited)
-	if chteVal, ok := rawResults[smc.KeyChargeInhibit]; ok {
-		// Assuming 'enabled' is a non-zero value. We need to confirm the exact byte.
-		// Let's assume non-zero means inhibited for now.
-		if len(chteVal.Data) > 0 && chteVal.Data[0] != 0x00 {
-			data.State.IsChargerInhibited = true
+	// Check for the CHTE key (IsCharging)
+	if chteVal, ok := rawResults[smc.KeyChargeControl]; ok {
+		// We know from our write functions that 0x01 means charging.
+		if len(chteVal.Data) > 0 && chteVal.Data[0] != 0x01 {
+			data.State.IsCharging = true
 		}
 	}
 
-	// Check for the CHIE key (IsAdapterDisabled)
-	if chieVal, ok := rawResults[smc.KeyChargerControl]; ok {
-		// We know from our write functions that 0x08 means disabled.
-		disabledBytes := []byte{0x08}
-		data.State.IsAdapterDisabled = bytes.Equal(chieVal.Data, disabledBytes)
+	// Check for the CHIE key (IsConnected)
+	if chieVal, ok := rawResults[smc.KeyAdapterControl]; ok {
+		// We know from our write functions that 0x00 means connected.
+		disabledBytes := []byte{0x00}
+		data.State.IsConnected = bytes.Equal(chieVal.Data, disabledBytes)
 	}
 
 	return data
@@ -82,10 +81,9 @@ func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSM
 func newIOKitData(raw *iokit.RawData) *IOKitData {
 	return &IOKitData{
 		State: IOKitState{
-			IsCharging:    raw.IsCharging,
-			IsConnected:   raw.IsConnected,
-			FullyCharged:  raw.IsFullyCharged,
-			StateOfCharge: raw.StateOfCharge,
+			IsCharging:   raw.IsCharging,
+			IsConnected:  raw.IsConnected,
+			FullyCharged: raw.IsFullyCharged,
 		},
 		Battery: IOKitBattery{
 			SerialNumber:           raw.SerialNumber,
@@ -97,6 +95,7 @@ func newIOKitData(raw *iokit.RawData) *IOKitData {
 			CurrentCapacity:        raw.CurrentCapacity,
 			TimeToEmpty:            raw.TimeToEmpty,
 			TimeToFull:             raw.TimeToFull,
+			CurrentCharge:          raw.CurrentCharge,
 			Temperature:            truncate(float64(raw.Temperature) / 100.0),
 			Voltage:                truncate(float64(raw.Voltage) / 1000.0),
 			Amperage:               truncate(float64(raw.Amperage) / 1000.0),

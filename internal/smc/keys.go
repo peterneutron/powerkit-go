@@ -12,10 +12,10 @@ const (
 	KeyBatteryCurrent = "B0AC"
 
 	// Adapter Control
-	KeyChargerControl = "CHIE" // macOS >= 26.x only
+	KeyAdapterControl = "CHIE" // macOS >= 26.x only
 
 	// Charge Control
-	KeyChargeInhibit = "CHTE" // macOS >= 26.x only
+	KeyChargeControl = "CHTE" // macOS >= 26.x only
 
 	// Magsafe LED Control
 	KeyMagsafeLED = "ACLC"
@@ -27,4 +27,7 @@ var KeysToRead = []string{
 	KeyDCInCurrent,
 	KeyBatteryVoltage,
 	KeyBatteryCurrent,
+	KeyAdapterControl,
+	KeyChargeControl,
+	KeyMagsafeLED,
 }

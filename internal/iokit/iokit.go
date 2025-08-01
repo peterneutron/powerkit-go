@@ -172,7 +172,7 @@ import (
 // RawData holds the unprocessed data returned from the IOKit C functions.
 // This struct is intended for internal use within the library.
 type RawData struct {
-	StateOfCharge   int
+	CurrentCharge   int
 	IsCharging      bool
 	IsConnected     bool
 	IsFullyCharged  bool
@@ -207,7 +207,7 @@ func FetchData() (*RawData, error) {
 	}
 
 	data := &RawData{
-		StateOfCharge:   int(c_info.state_of_charge),
+		CurrentCharge:   int(c_info.state_of_charge),
 		IsCharging:      c_info.is_charging != 0,
 		IsConnected:     c_info.is_connected != 0,
 		IsFullyCharged:  c_info.is_fully_charged != 0,

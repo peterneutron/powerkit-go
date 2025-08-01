@@ -33,10 +33,9 @@ type IOKitData struct {
 
 // State holds booleans describing the current charging status, sourced from IOKit.
 type IOKitState struct {
-	IsCharging    bool `json:"IsCharging"`
-	IsConnected   bool `json:"IsConnected"`
-	FullyCharged  bool `json:"FullyCharged"`
-	StateOfCharge int  `json:"StateOfCharge"`
+	IsCharging   bool `json:"IsCharging"`
+	IsConnected  bool `json:"IsConnected"`
+	FullyCharged bool `json:"FullyCharged"`
 }
 
 // IOKitBattery contains all data points related to the battery itself, as reported by IOKit.
@@ -53,6 +52,7 @@ type IOKitBattery struct {
 	Temperature            float64 `json:"Temperature"`
 	Voltage                float64 `json:"Voltage"`
 	Amperage               float64 `json:"Amperage"`
+	CurrentCharge          int     `json:"CurrentCharge"`
 	IndividualCellVoltages []int   `json:"IndividualCellVoltages"`
 }
 
@@ -87,8 +87,8 @@ type SMCData struct {
 }
 
 type SMCState struct {
-	IsAdapterDisabled  bool `json:"IsAdapterDisabled"`
-	IsChargerInhibited bool `json:"IsChargerInhibited"`
+	IsCharging  bool `json:"IsCharging"`   // was IsAdapterInhibited
+	IsConnected bool `json:"IsConnected "` // was IsAdapterDisabled
 }
 
 // SMCBattery holds raw battery-related sensor readings from the SMC.

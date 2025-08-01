@@ -48,7 +48,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 		// 1. Fetch the standard float values
 		smcFloatResults, err := smc.FetchData(smc.KeysToRead)
 		// 2. Fetch the specific raw values we need for the state
-		smcRawResults, rawErr := smc.FetchRawData([]string{smc.KeyChargeInhibit, smc.KeyChargerControl})
+		smcRawResults, rawErr := smc.FetchRawData([]string{smc.KeyChargeControl, smc.KeyAdapterControl})
 		if err != nil || rawErr != nil {
 			if !options.QueryIOKit {
 				return nil, fmt.Errorf("failed to fetch required SMC data: %w", err)
@@ -134,14 +134,14 @@ func SetMagsafeLEDColor(color MagsafeColor) error {
 func EnableCharger() error {
 	// The CHIE key expects a single byte: 0x0 to enable the charger.
 	data := []byte{0x0}
-	return smc.WriteData(smc.KeyChargerControl, data)
+	return smc.WriteData(smc.KeyAdapterControl, data)
 }
 
 // DisableCharger disables the charger.
 func DisableCharger() error {
 	// The CHIE key expects a single byte: 0x8 to disable the charger.
 	data := []byte{0x8}
-	return smc.WriteData(smc.KeyChargerControl, data)
+	return smc.WriteData(smc.KeyAdapterControl, data)
 }
 
 // EnableChargeInhibit prevents the battery from charging even when the AC
@@ -149,12 +149,12 @@ func DisableCharger() error {
 func EnableChargeInhibit() error {
 	// The CHTE key expects 4 byte: 0x01, 0x00, 0x00, 0x00 to enable inhibit.
 	data := []byte{0x01, 0x00, 0x00, 0x00}
-	return smc.WriteData(smc.KeyChargeInhibit, data)
+	return smc.WriteData(smc.KeyChargeControl, data)
 }
 
 // DisableChargeInhibit allows the battery to resume normal charging.
 func DisableChargeInhibit() error {
 	// The CHTE key expects 4 byte: 0x00, 0x00, 0x00, 0x00 to disable inhibit.
 	data := []byte{0x00, 0x00, 0x00, 0x00}
-	return smc.WriteData(smc.KeyChargeInhibit, data)
+	return smc.WriteData(smc.KeyChargeControl, data)
 }
