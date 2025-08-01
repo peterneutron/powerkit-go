@@ -11,6 +11,7 @@ package iokit
 #include <string.h>
 
 typedef struct {
+    long state_of_charge;
     int is_charging;
     int is_connected;
     int is_fully_charged;
@@ -152,6 +153,12 @@ int get_all_battery_info(c_battery_info *info) {
     if (battery_data) {
         get_long_array_prop(battery_data, "CellVoltage", info->cell_voltages, 16, &info->cell_voltage_count);
     }
+    CFDictionaryRef battery_data_dict = get_dict_prop(properties, "BatteryData");
+    if (battery_data_dict != NULL) {
+        info->state_of_charge = get_long_prop(battery_data_dict, "StateOfCharge");
+    } else {
+        info->state_of_charge = 0;
+    }
     CFRelease(properties);
     return 0;
 }
@@ -165,6 +172,7 @@ import (
 // RawData holds the unprocessed data returned from the IOKit C functions.
 // This struct is intended for internal use within the library.
 type RawData struct {
+	StateOfCharge   int
 	IsCharging      bool
 	IsConnected     bool
 	IsFullyCharged  bool
@@ -199,6 +207,7 @@ func FetchData() (*RawData, error) {
 	}
 
 	data := &RawData{
+		StateOfCharge:   int(c_info.state_of_charge),
 		IsCharging:      c_info.is_charging != 0,
 		IsConnected:     c_info.is_connected != 0,
 		IsFullyCharged:  c_info.is_fully_charged != 0,

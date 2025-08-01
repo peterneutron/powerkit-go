@@ -82,9 +82,10 @@ func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSM
 func newIOKitData(raw *iokit.RawData) *IOKitData {
 	return &IOKitData{
 		State: IOKitState{
-			IsCharging:   raw.IsCharging,
-			IsConnected:  raw.IsConnected,
-			FullyCharged: raw.IsFullyCharged,
+			IsCharging:    raw.IsCharging,
+			IsConnected:   raw.IsConnected,
+			FullyCharged:  raw.IsFullyCharged,
+			StateOfCharge: raw.StateOfCharge,
 		},
 		Battery: IOKitBattery{
 			SerialNumber:           raw.SerialNumber,

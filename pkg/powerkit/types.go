@@ -33,9 +33,10 @@ type IOKitData struct {
 
 // State holds booleans describing the current charging status, sourced from IOKit.
 type IOKitState struct {
-	IsCharging   bool `json:"IsCharging"`
-	IsConnected  bool `json:"IsConnected"`
-	FullyCharged bool `json:"FullyCharged"`
+	IsCharging    bool `json:"IsCharging"`
+	IsConnected   bool `json:"IsConnected"`
+	FullyCharged  bool `json:"FullyCharged"`
+	StateOfCharge int  `json:"StateOfCharge"`
 }
 
 // IOKitBattery contains all data points related to the battery itself, as reported by IOKit.
