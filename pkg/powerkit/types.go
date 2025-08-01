@@ -3,6 +3,8 @@
 
 package powerkit
 
+// --- Configuration Structs ---
+
 // FetchOptions allows the user to specify which data sources to query.
 // By default, both sources are enabled.
 type FetchOptions struct {
@@ -10,27 +12,34 @@ type FetchOptions struct {
 	QuerySMC   bool
 }
 
-// BatteryInfo holds a comprehensive snapshot of all data points.
-// It separates data from its source (IOKit vs. SMC) for full transparency.
-type BatteryInfo struct {
-	State        State        `json:"State"`
-	Battery      Battery      `json:"Battery"`
-	Adapter      Adapter      `json:"Adapter"`
-	SMC          *SMC         `json:"SMC,omitempty"` // omitempty will hide this field if SMC data is not available
-	Calculations Calculations `json:"Calculations"`
+// --- Top-Level Container Struct ---
+
+// SystemInfo is the new top-level struct that holds all hardware information,
+// cleanly separated by its source (IOKit or SMC).
+type SystemInfo struct {
+	IOKit *IOKitData `json:"IOKit,omitempty"`
+	SMC   *SMCData   `json:"SMC,omitempty"`
 }
 
-// State holds booleans describing the current charging status.
-// as reported by the high-level IOKit service.
+// --- IOKit-Specific Data Structures ---
+
+// IOKitData is a container for all data and calculations derived from the IOKit registry.
+type IOKitData struct {
+	State        State             `json:"State"`
+	Battery      IOKitBattery      `json:"Battery"`
+	Adapter      IOKitAdapter      `json:"Adapter"`
+	Calculations IOKitCalculations `json:"Calculations"`
+}
+
+// State holds booleans describing the current charging status, sourced from IOKit.
 type State struct {
 	IsCharging   bool `json:"IsCharging"`
 	IsConnected  bool `json:"IsConnected"`
 	FullyCharged bool `json:"FullyCharged"`
 }
 
-// Battery contains all data points directly related to the battery itself,
-// as reported by the high-level IOKit service.
-type Battery struct {
+// IOKitBattery contains all data points related to the battery itself, as reported by IOKit.
+type IOKitBattery struct {
 	SerialNumber           string  `json:"SerialNumber"`
 	DeviceName             string  `json:"DeviceName"`
 	CycleCount             int     `json:"CycleCount"`
@@ -46,9 +55,8 @@ type Battery struct {
 	IndividualCellVoltages []int   `json:"IndividualCellVoltages"`
 }
 
-// Adapter contains all data points directly related to the adapter itself,
-// as reported by the high-level IOKit service.
-type Adapter struct {
+// IOKitAdapter contains all data points related to the adapter, as reported by IOKit.
+type IOKitAdapter struct {
 	Description   string  `json:"Description"`
 	MaxWatts      int     `json:"MaxWatts"`
 	MaxVoltage    float64 `json:"MaxVoltage"`
@@ -57,29 +65,48 @@ type Adapter struct {
 	InputAmperage float64 `json:"InputAmperage"`
 }
 
-// SMC holds real-time, low-level sensor readings directly from the hardware.
-type SMC struct {
-	InputVoltage    float64 `json:"InputVoltage"`
-	InputAmperage   float64 `json:"InputAmperage"`
-	InputPower      float64 `json:"InputPower"`
-	BatteryVoltage  float64 `json:"BatteryVoltage"`
-	BatteryAmperage float64 `json:"BatteryAmperage"`
-	BatteryPower    float64 `json:"BatteryPower"`
-	SystemPower     float64 `json:"SystemPower"`
+// IOKitCalculations holds all health and power metrics derived from IOKit data.
+type IOKitCalculations struct {
+	HealthByMaxCapacity     int     `json:"HealthByMaxCapacity"`
+	HealthByNominalCapacity int     `json:"HealthByNominalCapacity"`
+	ConditionAdjustedHealth int     `json:"ConditionAdjustedHealth"`
+	ACPower                 float64 `json:"ACPower"`
+	BatteryPower            float64 `json:"BatteryPower"`
+	SystemPower             float64 `json:"SystemPower"`
 }
 
-// PowerCalculation holds a set of power metrics derived from a single source.
-type PowerCalculation struct {
+// --- SMC-Specific Data Structures ---
+
+// SMCData is a container for all raw sensor data and calculations derived from the SMC.
+type SMCData struct {
+	Battery      SMCBattery      `json:"Battery"`
+	Adapter      SMCAdapter      `json:"Adapter"`
+	System       SMCSystem       `json:"System"`
+	Calculations SMCCalculations `json:"Calculations"`
+}
+
+// SMCBattery holds raw battery-related sensor readings from the SMC.
+type SMCBattery struct {
+	Voltage  float64 `json:"Voltage"`
+	Amperage float64 `json:"Amperage"`
+	Power    float64 `json:"Power"`
+}
+
+// SMCAdapter holds raw adapter-related sensor readings from the SMC.
+type SMCAdapter struct {
+	InputVoltage  float64 `json:"InputVoltage"`
+	InputAmperage float64 `json:"InputAmperage"`
+	InputPower    float64 `json:"InputPower"`
+}
+
+// SMCSystem holds raw system-wide sensor readings from the SMC.
+type SMCSystem struct {
+	Power float64 `json:"Power"`
+}
+
+// SMCCalculations holds power metrics derived purely from SMC sensor readings.
+type SMCCalculations struct {
 	ACPower      float64 `json:"ACPower"`
 	BatteryPower float64 `json:"BatteryPower"`
 	SystemPower  float64 `json:"SystemPower"`
-}
-
-// Calculations holds health metrics and distinct sub-calculations for each data source.
-type Calculations struct {
-	HealthByMaxCapacity     int              `json:"HealthByMaxCapacity"`
-	HealthByNominalCapacity int              `json:"HealthByNominalCapacity"`
-	ConditionAdjustedHealth int              `json:"ConditionAdjustedHealth"`
-	IOKit                   PowerCalculation `json:"IOKit"`
-	SMC                     PowerCalculation `json:"SMC,omitempty"` // omitempty will hide this if no SMC data exists
 }

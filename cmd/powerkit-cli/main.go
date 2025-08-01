@@ -4,31 +4,63 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
+	"os"
 
-	// Import your new, clean, public package
 	"github.com/peterneutron/powerkit-go/pkg/powerkit"
 )
 
 func main() {
-	// 1. Call the library's main function to get the data.
-	info, err := powerkit.GetBatteryInfo()
+	// --- 1. Define SIMPLE Command-Line Flags ---
+	// We define one canonical name for each flag. The Go toolchain lets the
+	// user call them with either a single dash (-) or a double dash (--).
+
+	querySource := flag.String("q", "all", "Data source to query: all, smc, or iokit")
+	help := flag.Bool("h", false, "Show this help message")
+
+	// After defining all flags, parse them from the command-line arguments.
+	flag.Parse()
+
+	// If the user requested help, print the usage message and exit.
+	if *help {
+		fmt.Println("powerkit-cli: A tool to dump macOS hardware sensor data.")
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+
+	// --- 2. Build the FetchOptions from the Parsed Flag ---
+	var options powerkit.FetchOptions
+
+	// This logic is now much simpler because we only have one variable to check.
+	switch *querySource {
+	case "all":
+		options.QueryIOKit = true
+		options.QuerySMC = true
+	case "smc":
+		options.QueryIOKit = false
+		options.QuerySMC = true
+	case "iokit":
+		options.QueryIOKit = true
+		options.QuerySMC = false
+	default:
+		// If the user provides an invalid value, log an error and show help.
+		log.Printf("Error: invalid value for -q: '%s'. Must be 'all', 'smc', or 'iokit'.\n", *querySource)
+		flag.PrintDefaults()
+		os.Exit(1) // Exit with a non-zero code to indicate an error.
+	}
+
+	// --- 3. Call the Library and Print the Result ---
+	info, err := powerkit.GetSystemInfo(options)
 	if err != nil {
-		// If there's an error (e.g., SMC not found), print it to stderr
-		// and exit with a non-zero status code. log.Fatalf does this automatically.
 		log.Fatalf("Error getting hardware info: %v", err)
 	}
 
-	// 2. Marshal the returned struct into a nicely formatted JSON byte slice.
-	// The "" prefix means no prefix per line.
-	// The "  " indent means use two spaces for indentation.
 	jsonData, err := json.MarshalIndent(info, "", "  ")
 	if err != nil {
-		// This error is rare but should be handled.
 		log.Fatalf("Error formatting data to JSON: %v", err)
 	}
 
-	// 3. Print the final JSON string to standard output.
 	fmt.Println(string(jsonData))
 }

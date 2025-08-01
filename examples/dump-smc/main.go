@@ -17,7 +17,7 @@ func main() {
 	}
 
 	// 2. Call the library's main function, passing in our custom options.
-	info, err := powerkit.GetBatteryInfo(smcOnlyOptions)
+	info, err := powerkit.GetSystemInfo(smcOnlyOptions)
 	if err != nil {
 		// If the SMC read fails, this will now correctly be a fatal error.
 		log.Fatalf("Error getting SMC info: %v", err)

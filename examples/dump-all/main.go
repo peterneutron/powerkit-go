@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	info, err := powerkit.GetBatteryInfo()
+	info, err := powerkit.GetSystemInfo()
 	if err != nil {
 		log.Fatalf("Error getting battery info: %v", err)
 	}

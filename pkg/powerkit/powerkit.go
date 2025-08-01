@@ -11,127 +11,124 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
-// GetBatteryInfo is the primary public entrypoint to the library.
-// It accepts optional FetchOptions to control which data sources are queried.
-func GetBatteryInfo(opts ...FetchOptions) (*BatteryInfo, error) {
+// GetSystemInfo is the new primary entrypoint to the library.
+// It acts as a high-level coordinator for fetching and processing data.
+func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	// --- Configuration Handling ---
-	// Set default options: query both sources.
 	options := FetchOptions{
 		QueryIOKit: true,
 		QuerySMC:   true,
 	}
-	// If the user provided options, use them instead.
 	if len(opts) > 0 {
 		options = opts[0]
 	}
-	// If the user wants neither, that's an error.
 	if !options.QueryIOKit && !options.QuerySMC {
-		return nil, fmt.Errorf("FetchOptions must specify at least one data source (IOKit or SMC)")
+		return nil, fmt.Errorf("FetchOptions must specify at least one data source")
 	}
 
 	// --- Main Data Gathering ---
-	// Create a new, empty info struct. We will populate it conditionally.
-	info := &BatteryInfo{}
+	info := &SystemInfo{}
 
-	// Phase 1: Fetch and populate from IOKit ONLY IF requested.
+	// Phase 1: Fetch and populate IOKit data if requested.
 	if options.QueryIOKit {
-		rawData, err := iokit.FetchData()
+		iokitRawData, err := iokit.FetchData()
 		if err != nil {
-			// If IOKit is the ONLY source requested, this is a fatal error.
 			if !options.QuerySMC {
 				return nil, fmt.Errorf("failed to fetch required IOKit data: %w", err)
 			}
-			// Otherwise, just log a warning and proceed.
 			log.Printf("Warning: IOKit data fetch failed, continuing with SMC: %v", err)
 		} else {
-			// Populate all the IOKit-related structs.
-			info.State = State{
-				IsCharging:   rawData.IsCharging,
-				IsConnected:  rawData.IsConnected,
-				FullyCharged: rawData.IsFullyCharged,
-			}
-			info.Battery = Battery{
-				SerialNumber:           rawData.SerialNumber,
-				DeviceName:             rawData.DeviceName,
-				CycleCount:             rawData.CycleCount,
-				DesignCapacity:         rawData.DesignCapacity,
-				MaxCapacity:            rawData.MaxCapacity,
-				NominalCapacity:        rawData.NominalCapacity,
-				CurrentCapacity:        rawData.CurrentCapacity,
-				TimeToEmpty:            rawData.TimeToEmpty,
-				TimeToFull:             rawData.TimeToFull,
-				Temperature:            truncate(float64(rawData.Temperature) / 100.0),
-				Voltage:                truncate(float64(rawData.Voltage) / 1000.0),
-				Amperage:               truncate(float64(rawData.Amperage) / 1000.0),
-				IndividualCellVoltages: rawData.CellVoltages,
-			}
-			info.Adapter = Adapter{
-				Description:   rawData.AdapterDesc,
-				MaxWatts:      rawData.AdapterWatts,
-				MaxVoltage:    truncate(float64(rawData.AdapterVoltage) / 1000.0),
-				MaxAmperage:   truncate(float64(rawData.AdapterAmperage) / 1000.0),
-				InputVoltage:  truncate(float64(rawData.SourceVoltage) / 1000.0),
-				InputAmperage: truncate(float64(rawData.SourceAmperage) / 1000.0),
-			}
+			// The main function's logic is now clean. It just calls the constructor.
+			info.IOKit = newIOKitData(iokitRawData)
 		}
 	}
 
-	// Phase 2: Fetch and populate real-time SMC data ONLY IF requested.
+	// Phase 2: Fetch and populate SMC data if requested.
 	if options.QuerySMC {
 		smcResults, err := smc.FetchData(smc.KeysToRead)
 		if err != nil {
-			// If SMC is the ONLY source requested, this is a fatal error.
 			if !options.QueryIOKit {
 				return nil, fmt.Errorf("failed to fetch required SMC data: %w", err)
 			}
-			// Otherwise, log it and proceed with only the IOKit data (if any).
 			log.Printf("Warning: could not fetch SMC data: %v", err)
 		} else {
-			// Populate the SMC struct.
-			info.SMC = &SMC{}
-			if val, ok := smcResults["VD0R"]; ok {
-				info.SMC.InputVoltage = truncate(val)
-			}
-			if val, ok := smcResults["ID0R"]; ok {
-				info.SMC.InputAmperage = truncate(val)
-			}
-			if val, ok := smcResults["PDTR"]; ok {
-				info.SMC.InputPower = truncate(val)
-			}
-			if val, ok := smcResults["B0AV"]; ok {
-				info.SMC.BatteryVoltage = truncate(val / 1000.0)
-			}
-			if val, ok := smcResults["B0AC"]; ok {
-				info.SMC.BatteryAmperage = truncate(val / 1000.0)
-			}
-			if val, ok := smcResults["PPBR"]; ok {
-				info.SMC.BatteryPower = truncate(val)
-			}
-			if val, ok := smcResults["PSTR"]; ok {
-				info.SMC.SystemPower = truncate(val)
-			}
-
-			// Overwrite less-accurate values ONLY if IOKit was also queried.
-			// This prevents populating fields on an empty Battery struct.
-			if options.QueryIOKit {
-				if info.SMC.BatteryVoltage > 0 {
-					info.Battery.Voltage = info.SMC.BatteryVoltage
-				}
-				if info.SMC.BatteryAmperage != 0 {
-					info.Battery.Amperage = info.SMC.BatteryAmperage
-				}
-				if info.SMC.InputVoltage > 0 {
-					info.Adapter.InputVoltage = info.SMC.InputVoltage
-				}
-				if info.SMC.InputAmperage != 0 {
-					info.Adapter.InputAmperage = info.SMC.InputAmperage
-				}
-			}
+			// The logic is clean here too.
+			info.SMC = newSMCData(smcResults)
 		}
 	}
 
-	// Phase 3: Populate derived calculations using the best available data.
+	// Phase 3: Populate derived calculations.
 	calculateDerivedMetrics(info)
 
 	return info, nil
+}
+
+// --- Constructor Functions ---
+
+// newIOKitData is a private helper that transforms raw IOKit data
+// into the public IOKitData struct. This is its only job.
+func newIOKitData(raw *iokit.RawData) *IOKitData {
+	return &IOKitData{
+		State: State{
+			IsCharging:   raw.IsCharging,
+			IsConnected:  raw.IsConnected,
+			FullyCharged: raw.IsFullyCharged,
+		},
+		Battery: IOKitBattery{
+			SerialNumber:           raw.SerialNumber,
+			DeviceName:             raw.DeviceName,
+			CycleCount:             raw.CycleCount,
+			DesignCapacity:         raw.DesignCapacity,
+			MaxCapacity:            raw.MaxCapacity,
+			NominalCapacity:        raw.NominalCapacity,
+			CurrentCapacity:        raw.CurrentCapacity,
+			TimeToEmpty:            raw.TimeToEmpty,
+			TimeToFull:             raw.TimeToFull,
+			Temperature:            truncate(float64(raw.Temperature) / 100.0),
+			Voltage:                truncate(float64(raw.Voltage) / 1000.0),
+			Amperage:               truncate(float64(raw.Amperage) / 1000.0),
+			IndividualCellVoltages: raw.CellVoltages,
+		},
+		Adapter: IOKitAdapter{
+			Description:   raw.AdapterDesc,
+			MaxWatts:      raw.AdapterWatts,
+			MaxVoltage:    truncate(float64(raw.AdapterVoltage) / 1000.0),
+			MaxAmperage:   truncate(float64(raw.AdapterAmperage) / 1000.0),
+			InputVoltage:  truncate(float64(raw.SourceVoltage) / 1000.0),
+			InputAmperage: truncate(float64(raw.SourceAmperage) / 1000.0),
+		},
+	}
+}
+
+// newSMCData is a private helper that transforms raw SMC key-value data
+// into the public SMCData struct.
+func newSMCData(results map[string]float64) *SMCData {
+	data := &SMCData{
+		Battery: SMCBattery{},
+		Adapter: SMCAdapter{},
+		System:  SMCSystem{},
+	}
+
+	if val, ok := results["VD0R"]; ok {
+		data.Adapter.InputVoltage = truncate(val)
+	}
+	if val, ok := results["ID0R"]; ok {
+		data.Adapter.InputAmperage = truncate(val)
+	}
+	if val, ok := results["PDTR"]; ok {
+		data.Adapter.InputPower = truncate(val)
+	}
+	if val, ok := results["B0AV"]; ok {
+		data.Battery.Voltage = truncate(val / 1000.0)
+	}
+	if val, ok := results["B0AC"]; ok {
+		data.Battery.Amperage = truncate(val / 1000.0)
+	}
+	if val, ok := results["PPBR"]; ok {
+		data.Battery.Power = truncate(val)
+	}
+	if val, ok := results["PSTR"]; ok {
+		data.System.Power = truncate(val)
+	}
+	return data
 }
