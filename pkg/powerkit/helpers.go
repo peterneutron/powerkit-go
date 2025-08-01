@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/peterneutron/powerkit-go/internal/iokit"
+	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
 // truncate rounds a float down to two decimal places. This is used
@@ -40,16 +41,16 @@ func newSMCData(results map[string]float64) *SMCData {
 		Adapter: SMCAdapter{},
 	}
 
-	if val, ok := results["VD0R"]; ok {
+	if val, ok := results[smc.KeyDCInVoltage]; ok {
 		data.Adapter.InputVoltage = truncate(val)
 	}
-	if val, ok := results["ID0R"]; ok {
+	if val, ok := results[smc.KeyDCInCurrent]; ok {
 		data.Adapter.InputAmperage = truncate(val)
 	}
-	if val, ok := results["B0AV"]; ok {
+	if val, ok := results[smc.KeyBatteryVoltage]; ok {
 		data.Battery.Voltage = truncate(val / 1000.0)
 	}
-	if val, ok := results["B0AC"]; ok {
+	if val, ok := results[smc.KeyBatteryCurrent]; ok {
 		data.Battery.Amperage = truncate(val / 1000.0)
 	}
 	return data

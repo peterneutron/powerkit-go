@@ -1,12 +1,30 @@
+// internal/smc/keys.go
 package smc
 
-// List of keys to read from the System Management Controller (SMC).
+// SMC Key Constants
+const (
+	// Adapter / DC In
+	KeyDCInVoltage = "VD0R"
+	KeyDCInCurrent = "ID0R"
+
+	// Battery
+	KeyBatteryVoltage = "B0AV"
+	KeyBatteryCurrent = "B0AC"
+
+	// Adapter Control
+	KeyChargerControl = "CHIE" // macOS >= 26.x only
+
+	// Charge Control
+	KeyChargeInhibit = "CHTE" // macOS >= 26.x only
+
+	// Magsafe LED Control
+	KeyMagsafeLED = "ACLC"
+)
+
+// KeysToRead is the standard list of keys fetched by the main GetSystemInfo function.
 var KeysToRead = []string{
-	"VD0R", // DC In Voltage
-	"ID0R", // DC In Current
-	"PDTR", // DC In Power (Watts)
-	"B0AV", // Battery Voltage
-	"B0AC", // Battery Current
-	"PPBR", // Battery Power (Watts)
-	"PSTR", // System Power (Watts)
+	KeyDCInVoltage,
+	KeyDCInCurrent,
+	KeyBatteryVoltage,
+	KeyBatteryCurrent,
 }

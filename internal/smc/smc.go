@@ -13,7 +13,7 @@ package smc
 
 #define KERNEL_INDEX_SMC 2
 #define SMC_CMD_READ_BYTES 5
-#define SMC_CMD_WRITE_BYTES 4
+#define SMC_CMD_WRITE_BYTES 6
 #define SMC_CMD_READ_KEYINFO 9
 
 // --- Data Structures ---
@@ -224,32 +224,40 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
     SMCKeyData_t output;
     size_t structSize = sizeof(SMCKeyData_t);
 
-    // First, we MUST read the key's metadata to ensure we're writing
-    // with the correct data size and type.
+    // --- STEP 1: Read the key's full metadata first (like SMCReadKey2 does) ---
     memset(&input, 0, structSize);
     memset(&output, 0, structSize);
     input.key = str_to_key(key);
     input.data8 = SMC_CMD_READ_KEYINFO;
     kern_return_t kr = smc_call(conn, &input, &output);
     if (kr != KERN_SUCCESS || output.result != 0) {
-        return KERN_FAILURE; // Key not found or other read error
+        return KERN_FAILURE; // Key not found or other initial error
     }
 
-    // Check if the provided data size matches what the key expects.
-    if (dataSize != output.keyInfo.dataSize) {
-        return kIOReturnBadArgument; // Mismatched data size
+    // Save the complete, correct keyInfo from the hardware.
+    SMCKeyData_keyInfo_t keyInfo = output.keyInfo;
+
+    // Verify the data size before proceeding.
+    if (dataSize != keyInfo.dataSize) {
+        return kIOReturnBadArgument;
     }
 
-    // Now, prepare the input struct for the WRITE command.
-    input.keyInfo = output.keyInfo;
-    input.data8 = SMC_CMD_WRITE_BYTES;
+    // --- STEP 2: Now, construct the WRITE payload using the retrieved metadata ---
+    memset(&input, 0, structSize);
+    memset(&output, 0, structSize);
+
+    input.key = str_to_key(key);
+    input.data8 = SMC_CMD_WRITE_BYTES; // Command code 6
+    input.keyInfo = keyInfo; // Use the full, correct keyInfo
     memcpy(input.bytes, bytesToWrite, dataSize);
 
-    // Perform the write call.
-    memset(&output, 0, structSize);
+    // Perform the final write call.
     kr = smc_call(conn, &input, &output);
     if (kr != KERN_SUCCESS || output.result != 0) {
-        return KERN_FAILURE; // Write command failed
+        if (output.result != 0) {
+            return (kern_return_t)output.result;
+        }
+        return kr;
     }
 
     return KERN_SUCCESS;

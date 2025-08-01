@@ -88,7 +88,8 @@ func GetRawSMCValues(keys []string) (map[string]RawSMCValue, error) {
 	return results, nil
 }
 
-// --- Public Write API ---
+// ---------------  Public Write API  -------------- //
+// WARNING: These functions require root privileges. //
 
 // MagsafeColor defines the possible states for the charging LED.
 type MagsafeColor int
@@ -123,20 +124,34 @@ func SetMagsafeLEDColor(color MagsafeColor) error {
 	data := []byte{0x00, colorCode}
 
 	// Call the internal, generic write function.
-	return smc.WriteData("ACLC", data)
+	return smc.WriteData(smc.KeyMagsafeLED, data)
+}
+
+// EnableCharger enables the charger.
+func EnableCharger() error {
+	// The CHIE key expects a single byte: 0x0 to enable the charger.
+	data := []byte{0x0}
+	return smc.WriteData(smc.KeyChargerControl, data)
+}
+
+// DisableCharger disables the charger.
+func DisableCharger() error {
+	// The CHIE key expects a single byte: 0x8 to disable the charger.
+	data := []byte{0x8}
+	return smc.WriteData(smc.KeyChargerControl, data)
 }
 
 // EnableChargeInhibit prevents the battery from charging even when the AC
-// adapter is connected. This is useful for preserving battery health.
+// adapter is connected.
 func EnableChargeInhibit() error {
-	// The CHTE key expects a single byte: 0x08 to enable inhibit.
-	data := []byte{0x08}
-	return smc.WriteData("CHTE", data)
+	// The CHTE key expects 4 byte: 0x01, 0x00, 0x00, 0x00 to enable inhibit.
+	data := []byte{0x01, 0x00, 0x00, 0x00}
+	return smc.WriteData(smc.KeyChargeInhibit, data)
 }
 
 // DisableChargeInhibit allows the battery to resume normal charging.
 func DisableChargeInhibit() error {
-	// The CHTE key expects a single byte: 0x00 to disable inhibit.
-	data := []byte{0x00}
-	return smc.WriteData("CHTE", data)
+	// The CHTE key expects 4 byte: 0x00, 0x00, 0x00, 0x00 to disable inhibit.
+	data := []byte{0x00, 0x00, 0x00, 0x00}
+	return smc.WriteData(smc.KeyChargeInhibit, data)
 }
