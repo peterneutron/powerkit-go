@@ -11,7 +11,7 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
-// GetSystemInfo is the new primary entrypoint to the library.
+// GetSystemInfo is the primary entrypoint to the library.
 // It acts as a high-level coordinator for fetching and processing data.
 func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	// --- Configuration Handling ---
@@ -29,7 +29,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	// --- Main Data Gathering ---
 	info := &SystemInfo{}
 
-	// Phase 1: Fetch and populate IOKit data if requested.
+	// Fetch and populate IOKit data if requested.
 	if options.QueryIOKit {
 		iokitRawData, err := iokit.FetchData()
 		if err != nil {
@@ -43,12 +43,12 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 		}
 	}
 
-	// Phase 2: Fetch and populate SMC data if requested.
+	// Fetch and populate SMC data if requested.
 	if options.QuerySMC {
 		// 1. Fetch the standard float values
 		smcFloatResults, err := smc.FetchData(smc.KeysToRead)
 		// 2. Fetch the specific raw values we need for the state
-		smcRawResults, rawErr := smc.FetchRawData([]string{smc.KeyChargeControl, smc.KeyAdapterControl})
+		smcRawResults, rawErr := smc.FetchRawData([]string{smc.KeyIsChargingEnabled, smc.KeyIsAdapterEnabled})
 		if err != nil || rawErr != nil {
 			if !options.QueryIOKit {
 				return nil, fmt.Errorf("failed to fetch required SMC data: %w", err)
@@ -60,7 +60,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 		}
 	}
 
-	// Phase 3: Populate derived calculations.
+	// Populate derived calculations.
 	calculateDerivedMetrics(info)
 
 	return info, nil
@@ -89,72 +89,4 @@ func GetRawSMCValues(keys []string) (map[string]RawSMCValue, error) {
 	}
 
 	return results, nil
-}
-
-// ---------------  Public Write API  -------------- //
-// WARNING: These functions require root privileges. //
-
-// MagsafeColor defines the possible states for the charging LED.
-type MagsafeColor int
-
-const (
-	// LEDOff represents the 'Off' state for the Magsafe LED.
-	LEDOff MagsafeColor = iota // 0
-	// LEDAmber represents the 'Amber' (charging) state for the Magsafe LED.
-	LEDAmber // 1
-	// LEDGreen represents the 'Green' (fully charged) state for the Magsafe LED.
-	LEDGreen // 2
-)
-
-// SetMagsafeLEDColor sets the color of the Magsafe charging LED.
-func SetMagsafeLEDColor(color MagsafeColor) error {
-	// The ACLC key expects two bytes:
-	// Byte 0: LED ID (0 for Magsafe)
-	// Byte 1: Color code (0=Off, 1=Amber, 2=Green)
-	var colorCode byte
-	switch color {
-	case LEDAmber:
-		colorCode = 0x01
-	case LEDGreen:
-		colorCode = 0x02
-	case LEDOff:
-		colorCode = 0x00
-	default:
-		return fmt.Errorf("invalid MagsafeColor provided: %d", color)
-	}
-
-	// Prepare the 2-byte slice to write to the SMC.
-	data := []byte{0x00, colorCode}
-
-	// Call the internal, generic write function.
-	return smc.WriteData(smc.KeyMagsafeLED, data)
-}
-
-// EnableCharger enables the charger.
-func EnableCharger() error {
-	// The CHIE key expects a single byte: 0x0 to enable the charger.
-	data := []byte{0x0}
-	return smc.WriteData(smc.KeyAdapterControl, data)
-}
-
-// DisableCharger disables the charger.
-func DisableCharger() error {
-	// The CHIE key expects a single byte: 0x8 to disable the charger.
-	data := []byte{0x8}
-	return smc.WriteData(smc.KeyAdapterControl, data)
-}
-
-// EnableChargeInhibit prevents the battery from charging even when the AC
-// adapter is connected.
-func EnableChargeInhibit() error {
-	// The CHTE key expects 4 byte: 0x01, 0x00, 0x00, 0x00 to enable inhibit.
-	data := []byte{0x01, 0x00, 0x00, 0x00}
-	return smc.WriteData(smc.KeyChargeControl, data)
-}
-
-// DisableChargeInhibit allows the battery to resume normal charging.
-func DisableChargeInhibit() error {
-	// The CHTE key expects 4 byte: 0x00, 0x00, 0x00, 0x00 to disable inhibit.
-	data := []byte{0x00, 0x00, 0x00, 0x00}
-	return smc.WriteData(smc.KeyChargeControl, data)
 }

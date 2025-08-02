@@ -4,18 +4,19 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/peterneutron/powerkit-go)](https://goreportcard.com/report/github.com/peterneutron/powerkit-go)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A comprehensive Go library for monitoring macOS hardware, with a current focus on power and battery sensors. It provides detailed, source-separated information from both IOKit and the System Management Controller (SMC).
+A comprehensive Go library for monitoring and controlling macOS power features. It provides detailed, source-separated information from both IOKit and the System Management Controller (SMC), and offers functions to control charging behavior and the MagSafe LED.
 
 > ### ⚠️ Pre-Release Software Notice ⚠️
-> This library is in its initial development phase (v0.x.x). The API is not yet stable and is subject to breaking changes in future releases. Please use with caution and consider pinning to a specific version in your project.
+> This library is in its initial development phase. The API is not yet stable and is subject to breaking changes in future releases. Please use with caution and consider pinning to a specific version in your project.
 
 ## Features
 
-*   **Dual Source Data:** Access both the high-level `IOKit` registry and the low-level `SMC` for a complete hardware picture.
-*   **Source-Centric API:** The primary API returns a clean, structured `SystemInfo` object that strictly separates data by its source, eliminating ambiguity and data overwriting.
+*   **Dual Source Data:** Access both the high-level `IOKit` registry and the low-level `SMC` for a complete power profile.
+*   **Hardware Control:** Enable/disable charging, connect/disconnect the AC adapter, and change the MagSafe LED color (requires root privileges).
+*   **Source-Centric API:** The primary API returns a clean, structured `SystemInfo` object that strictly separates data by its source, eliminating ambiguity.
 *   **Flexible Queries:** Choose to query IOKit, the SMC, or both, for maximum efficiency.
-*   **Raw SMC Access:** A dedicated, powerful API for advanced users to query custom SMC keys and receive raw, undecoded values for their own interpretation.
-*   **Command-Line Tool:** Includes `powerkit-cli`, a user-friendly tool to dump hardware info or perform raw SMC queries directly from your terminal.
+*   **Raw SMC Access:** A dedicated API for advanced users to query custom SMC keys.
+*   **Command-Line Tool:** Includes `powerkit-cli` to dump hardware info, query SMC keys, and control power states from your terminal.
 
 ## Installation
 
@@ -57,7 +58,7 @@ func main() {
   "IOKit": {
     "State": {
       "IsCharging": false,
-      "IsConnected": true,
+      "IsConnected": false,
       "FullyCharged": false
     },
     "Battery": {
@@ -65,56 +66,125 @@ func main() {
       "DeviceName": "...",
       "CycleCount": 183,
       "DesignCapacity": 8579,
-      "MaxCapacity": 7649,
-      "NominalCapacity": 7893,
-      "CurrentCapacity": 6050,
-      "TimeToEmpty": 65535,
+      "MaxCapacity": 7647,
+      "NominalCapacity": 7891,
+      "CurrentCapacity": 2620,
+      "TimeToEmpty": 229,
       "TimeToFull": 65535,
-      "Temperature": 30.13,
-      "Voltage": 12.27,
-      "Amperage": 0,
+      "Temperature": 30.19,
+      "Voltage": 11.36,
+      "Amperage": -0.48,
+      "CurrentCharge": 35,
       "IndividualCellVoltages": [
-        4091,
-        4092,
-        4091
+        3787,
+        3788,
+        3787
       ]
     },
     "Adapter": {
       "Description": "...",
-      "MaxWatts": 60,
-      "MaxVoltage": 20,
-      "MaxAmperage": 3,
-      "InputVoltage": 19.32,
-      "InputAmperage": 0.13
+      "MaxWatts": 0,
+      "MaxVoltage": 0,
+      "MaxAmperage": 0,
+      "InputVoltage": 0,
+      "InputAmperage": 0
     },
     "Calculations": {
       "HealthByMaxCapacity": 89,
       "HealthByNominalCapacity": 92,
       "ConditionAdjustedHealth": 95,
-      "ACPower": 2.51,
-      "BatteryPower": 0,
-      "SystemPower": 2.51
+      "ACPower": 0,
+      "BatteryPower": -5.45,
+      "SystemPower": 5.45
     }
   },
   "SMC": {
+    "State": {
+      "IsChargingEnabled": true,
+      "IsAdapterEnabled": true
+    },
     "Battery": {
-      "Voltage": 12.27,
-      "Amperage": 0
+      "Voltage": 11.36,
+      "Amperage": -0.42
     },
     "Adapter": {
-      "InputVoltage": 19.32,
-      "InputAmperage": 0.13
+      "InputVoltage": 0,
+      "InputAmperage": 0
     },
     "Calculations": {
-      "ACPower": 2.51,
-      "BatteryPower": 0,
-      "SystemPower": 2.51
+      "ACPower": 0,
+      "BatteryPower": -4.77,
+      "SystemPower": 4.77
     }
   }
 }
 ```
 
-### 2. Advanced Usage: Querying a Single Source
+### 2. Hardware Control (Requires Root)
+
+> **⚠️ WARNING:** The following functions write directly to the System Management Controller (SMC). They require root privileges to run and can potentially impact your hardware. Use with caution.
+
+#### Controlling Charging
+
+You can enable, disable, or toggle the battery charging state.
+
+```go
+// Disable charging
+err := powerkit.SetChargingState(powerkit.ChargingActionOff)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Enable charging
+err = powerkit.SetChargingState(powerkit.ChargingActionOn)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+#### Controlling the Adapter
+
+You can programmatically connect or disconnect the AC adapter.
+
+```go
+// Disable the adapter
+err := powerkit.SetAdapterState(powerkit.AdapterActionOff)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Enable the adapter
+err = powerkit.SetAdapterState(powerkit.AdapterActionOn)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+#### Controlling the MagSafe LED
+
+You can change the color of the MagSafe charging LED.
+
+```go
+// Set LED to Amber
+err := powerkit.SetMagsafeLEDColor(powerkit.LEDAmber)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Set LED to Green
+err = powerkit.SetMagsafeLEDColor(powerkit.LEDGreen)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Turn LED Off
+err = powerkit.SetMagsafeLEDColor(powerkit.LEDOff)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+### 3. Advanced Usage: Querying a Single Source
 
 For efficiency, you can provide `FetchOptions` to query only the data source you need. The resulting JSON will cleanly omit the unused source.
 
@@ -129,7 +199,7 @@ info, err := powerkit.GetSystemInfo(options)
 // The output JSON will have no "IOKit" key.
 ```
 
-### 3. Power User: Raw SMC Key Queries
+### 4. Power User: Raw SMC Key Queries
 
 For maximum flexibility, `GetRawSMCValues()` allows you to query any custom SMC key and receive the raw, undecoded data. You are responsible for interpreting the bytes.
 
@@ -149,7 +219,7 @@ for key, val := range rawValues {
 
 ## Command-Line Tool (`powerkit-cli`)
 
-The library includes a simple CLI tool.
+The library includes a simple CLI tool for reading sensors and controlling power states.
 
 ### Installation
 ```bash
@@ -158,25 +228,18 @@ go install github.com/peterneutron/powerkit-go/cmd/powerkit-cli@latest
 
 ### Usage
 
-**Get Help (default):**
+**Read Commands:**
 ```bash
-powerkit-cli
-```
-
-**Dump all curated data:**
-```bash
+# Dump all curated data as JSON
 powerkit-cli all
-```
 
-**Dump only IOKit or SMC data:**
-```bash
+# Dump only IOKit or SMC data
 powerkit-cli iokit
 powerkit-cli smc
-```
 
-**Perform a raw query for custom SMC keys:**
-```bash
-powerkit-cli raw FNum TC0D PPBR```
+# Perform a raw query for custom SMC keys
+powerkit-cli raw FNum TC0D PPBR
+```
 **Example Output for `raw`:**
 ```json
 {
@@ -196,6 +259,21 @@ powerkit-cli raw FNum TC0D PPBR```
     "Data": "34a0"
   }
 }
+```
+
+**Write Commands (Requires Root):**
+```bash
+# Disable the AC adapter
+sudo powerkit-cli adapter off
+
+# Enable the AC adapter
+sudo powerkit-cli adapter on
+
+# Disable battery charging
+sudo powerkit-cli charging off
+
+# Enable battery charging
+sudo powerkit-cli charging on
 ```
 
 ## Contributing

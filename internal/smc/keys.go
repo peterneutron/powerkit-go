@@ -4,18 +4,18 @@ package smc
 // SMC Key Constants
 const (
 	// Adapter / DC In
-	KeyDCInVoltage = "VD0R"
-	KeyDCInCurrent = "ID0R"
+	KeyAdapterVoltage = "VD0R"
+	KeyAdapterCurrent = "ID0R"
 
 	// Battery
 	KeyBatteryVoltage = "B0AV"
 	KeyBatteryCurrent = "B0AC"
 
 	// Adapter Control
-	KeyAdapterControl = "CHIE" // macOS >= 26.x only
+	KeyIsAdapterEnabled = "CHIE" // macOS >= 26.x only
 
 	// Charge Control
-	KeyChargeControl = "CHTE" // macOS >= 26.x only
+	KeyIsChargingEnabled = "CHTE" // macOS >= 26.x only
 
 	// Magsafe LED Control
 	KeyMagsafeLED = "ACLC"
@@ -23,11 +23,11 @@ const (
 
 // KeysToRead is the standard list of keys fetched by the main GetSystemInfo function.
 var KeysToRead = []string{
-	KeyDCInVoltage,
-	KeyDCInCurrent,
+	KeyAdapterVoltage,
+	KeyAdapterCurrent,
 	KeyBatteryVoltage,
 	KeyBatteryCurrent,
-	KeyAdapterControl,
-	KeyChargeControl,
+	KeyIsAdapterEnabled,
+	KeyIsChargingEnabled,
 	KeyMagsafeLED,
 }

@@ -31,7 +31,7 @@ func main() {
 		handleRawCommand(os.Args[2:])
 
 	// Write commands (two words)
-	case "charger", "charging":
+	case "adapter", "charging":
 		// These commands require a second argument ('on' or 'off')
 		if len(os.Args) < 3 {
 			log.Fatalf("Error: '%s' command requires an action ('on' or 'off').\nUsage: powerkit-cli %s on", commandGroup, commandGroup)
@@ -61,8 +61,8 @@ func printUsage() {
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
 
 	fmt.Println("\nWrite Commands (may require sudo):")
-	fmt.Println("  charger on   Connect the battery to the charger")
-	fmt.Println("  charger off  Disconnect the battery from the charger (using CHIE)")
+	fmt.Println("  adapter on   Connect the battery to the charger")
+	fmt.Println("  adapter off  Disconnect the battery from the charger (using CHIE)")
 	fmt.Println("  charging on  Allow battery to charge to 100% (using BCLM)")
 	fmt.Println("  charging off Set max charge level to current level (using BCLM)")
 
@@ -77,27 +77,27 @@ func handleWriteCommand(group, action string) {
 	var err error
 	var successMsg string
 
-	if group == "charger" {
+	if group == "adapter" {
 		if action == "on" {
-			fmt.Println("Attempting to connect the charger...")
-			err = powerkit.EnableCharger()
-			successMsg = "Successfully connected the charger."
+			fmt.Println("Attempting to enable the charger...")
+			err = powerkit.SetAdapterState(powerkit.AdapterActionOn)
+			successMsg = "Successfully enabled the charger."
 		} else if action == "off" {
-			fmt.Println("Attempting to disconnect the charger...")
-			err = powerkit.DisableCharger()
-			successMsg = "Successfully disconnected the charger."
+			fmt.Println("Attempting to disable the charger...")
+			err = powerkit.SetAdapterState(powerkit.AdapterActionOff)
+			successMsg = "Successfully disabled the charger."
 		} else {
-			log.Fatalf("Error: invalid action '%s' for 'charger' command. Use 'on' or 'off'.", action)
+			log.Fatalf("Error: invalid action '%s' for 'adapter' command. Use 'on' or 'off'.", action)
 		}
 	} else if group == "charging" {
 		if action == "on" {
-			fmt.Println("Attempting to allow charging to 100%...")
-			err = powerkit.DisableChargeInhibit()
-			successMsg = "Successfully set max charge to 100%."
+			fmt.Println("Attempting to enable charging")
+			err = powerkit.SetChargingState(powerkit.ChargingActionOn)
+			successMsg = "Successfully enabled charging."
 		} else if action == "off" {
-			fmt.Println("Attempting to set max charge to current level...")
-			err = powerkit.EnableChargeInhibit()
-			successMsg = "Successfully set max charge to current level."
+			fmt.Println("Attempting to disable charging")
+			err = powerkit.SetChargingState(powerkit.ChargingActionOff)
+			successMsg = "Successfully disabled charging."
 		} else {
 			log.Fatalf("Error: invalid action '%s' for 'charging' command. Use 'on' or 'off'.", action)
 		}

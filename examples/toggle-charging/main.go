@@ -1,56 +1,65 @@
-// This example demonstrates a complete read-then-write workflow.
-// It reads the current state of the charge inhibit setting and toggles it,
-// effectively toggling the charger's state.
+// This example demonstrates the high-level API for controlling the charge level limit.
+// It reads the current status of the charge inhibit flag and then uses the 'Toggle' action to flip the state.
 package main
 
 import (
-	"bytes" // Import the bytes package for safe slice comparison
 	"fmt"
 	"log"
 
 	"github.com/peterneutron/powerkit-go/pkg/powerkit"
-	// We import the internal smc package to get access to the key constants
-	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
 func main() {
-	// --- 1. Define the Key and Expected Values using Constants ---
-	// Using constants from the smc package makes this code safe from typos.
-	chargeInhibitKey := smc.KeyChargeControl
-	enabledBytes := []byte{0x00} // The byte sequence for "inhibit enabled" (charging disabled)
-
-	// --- 2. Read the Current State ---
-	fmt.Printf("Reading current state of SMC key '%s'...\n", chargeInhibitKey)
-	rawValues, err := powerkit.GetRawSMCValues([]string{chargeInhibitKey})
+	// --- 1. Read the Current State using the Main API ---
+	// We only need SMC data for this, so we'll use FetchOptions for efficiency.
+	fmt.Println("Reading current charge level limit state...")
+	options := powerkit.FetchOptions{
+		QueryIOKit: false,
+		QuerySMC:   true,
+	}
+	info, err := powerkit.GetSystemInfo(options)
 	if err != nil {
-		log.Fatalf("Error reading SMC key '%s': %v", chargeInhibitKey, err)
+		log.Fatalf("Error reading current state: %v", err)
 	}
 
-	inhibitValue, ok := rawValues[chargeInhibitKey]
-	if !ok {
-		log.Fatalf("Error: Could not find SMC key '%s' on this system.", chargeInhibitKey)
+	// The GetSystemInfo function provides a clean, pre-calculated boolean.
+	if info.SMC == nil {
+		log.Fatal("Could not retrieve SMC data.")
 	}
+	isCurrentlyInhibited := !info.SMC.State.IsChargingEnabled
 
-	// --- 3. Check the State Correctly ---
-	// We use bytes.Equal to safely compare the entire slice. This is robust.
-	isChargingDisabled := bytes.Equal(inhibitValue.Data, enabledBytes)
-
-	// --- 4. Perform the Toggle Action ---
-	if isChargingDisabled {
-		fmt.Printf("Charging is currently DISABLED. Enabling now...\n")
-		// To enable charging, we must disable the inhibit.
-		err = powerkit.DisableChargeInhibit()
-		if err != nil {
-			log.Fatalf("Failed to enable charging: %v", err)
-		}
-		fmt.Println("Successfully enabled charging. The battery will now charge normally.")
+	// Report the current state to the user.
+	if isCurrentlyInhibited {
+		fmt.Println("Charge level limit is currently: ENABLED (Charging is inhibited)")
 	} else {
-		fmt.Printf("Charging is currently ENABLED. Disabling now...\n")
-		// To disable charging, we must enable the inhibit.
-		err = powerkit.EnableChargeInhibit()
-		if err != nil {
-			log.Fatalf("Failed to disable charging: %v", err)
-		}
-		fmt.Println("Successfully disabled charging. The battery will not charge past its current level.")
+		fmt.Println("Charge level limit is currently: DISABLED (Charging is allowed to 100%)")
+	}
+
+	// --- 2. Perform the Toggle Action using the New Consolidated Function ---
+	fmt.Println("\nSending toggle command...")
+	// We call the single, powerful function with the 'Toggle' action.
+	// The library will handle the read-then-write logic internally.
+	err = powerkit.SetChargingState(powerkit.ChargingActionToggle)
+	if err != nil {
+		log.Fatalf("Failed to toggle charging state: %v", err)
+	}
+	fmt.Println("Toggle command sent successfully.")
+
+	// --- 3. (Optional but good practice) Read the State Again to Confirm ---
+	fmt.Println("\nReading new state to confirm change...")
+	infoAfter, err := powerkit.GetSystemInfo(options)
+	if err != nil {
+		log.Fatalf("Error reading state after toggle: %v", err)
+	}
+	if infoAfter.SMC == nil {
+		log.Fatal("Could not retrieve SMC data after toggle.")
+	}
+	isNowInhibited := !infoAfter.SMC.State.IsChargingEnabled
+
+	// Report the new state.
+	if isNowInhibited {
+		fmt.Println("Charge level limit is now: ENABLED")
+	} else {
+		fmt.Println("Charge level limit is now: DISABLED")
 	}
 }

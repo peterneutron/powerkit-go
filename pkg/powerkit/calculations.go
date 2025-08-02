@@ -2,67 +2,73 @@ package powerkit
 
 import "math"
 
-// calculateDerivedMetrics populates the Calculations struct with health
-// percentages and source-specific power flow data in Watts.
+// calculateDerivedMetrics is the top-level function that orchestrates the
+// calculation of all derived data, such as power metrics and battery health.
 func calculateDerivedMetrics(info *SystemInfo) {
 	if info.IOKit != nil {
+		calculateIOKitMetrics(info.IOKit)
+	}
+	if info.SMC != nil {
+		calculateSMCMetrics(info.SMC)
+	}
+}
 
-		// --- Health Percentage Calculations ---
-		if info.IOKit.Battery.DesignCapacity > 0 {
-			designCapF := float64(info.IOKit.Battery.DesignCapacity)
+// calculateIOKitMetrics populates all calculated fields for the IOKitData struct.
+func calculateIOKitMetrics(d *IOKitData) {
+	calculateHealthMetrics(&d.Battery, &d.Calculations)
+	calculateIOKitPower(d)
+}
 
-			healthByMax := (float64(info.IOKit.Battery.MaxCapacity) / designCapF) * 100.0
-			info.IOKit.Calculations.HealthByMaxCapacity = int(math.Round(healthByMax))
-
-			healthByNominal := (float64(info.IOKit.Battery.NominalCapacity) / designCapF) * 100.0
-			info.IOKit.Calculations.HealthByNominalCapacity = int(math.Round(healthByNominal))
-
-			var conditionModifier float64
-			if len(info.IOKit.Battery.IndividualCellVoltages) > 1 {
-				minV, maxV := findMinMax(info.IOKit.Battery.IndividualCellVoltages)
-				drift := maxV - minV
-				switch {
-				case drift <= 5:
-					conditionModifier = 2.5
-				case drift <= 15:
-					conditionModifier = 1.0
-				case drift <= 30:
-					conditionModifier = 0.0
-				case drift <= 50:
-					conditionModifier = -2.0
-				default:
-					conditionModifier = -10.0
-				}
-			}
-			info.IOKit.Calculations.ConditionAdjustedHealth = int(math.Round(healthByNominal + conditionModifier))
-		}
-
-		// --- IOKit Based Calculations ---
-		// Uses ONLY values from the IOKit-populated structs.
-		iokitACPower := info.IOKit.Adapter.InputVoltage * info.IOKit.Adapter.InputAmperage
-		// IOKit Amperage is negative on discharge, so this product will be correctly negative.
-		iokitBatteryPower := info.IOKit.Battery.Voltage * info.IOKit.Battery.Amperage
-		// SystemPower is the absolute difference.
-		iokitSystemPower := math.Abs(iokitACPower - iokitBatteryPower)
-
-		info.IOKit.Calculations.ACPower = truncate(iokitACPower)
-		info.IOKit.Calculations.BatteryPower = truncate(iokitBatteryPower)
-		info.IOKit.Calculations.SystemPower = truncate(iokitSystemPower)
+// calculateHealthMetrics computes various battery health percentages.
+func calculateHealthMetrics(b *IOKitBattery, c *IOKitCalculations) {
+	if b.DesignCapacity <= 0 {
+		return
 	}
 
-	// --- SMC Based Calculations ---
-	// These are only performed if SMC data was successfully fetched.
-	if info.SMC != nil {
-		smcACPower := info.SMC.Adapter.InputVoltage * info.SMC.Adapter.InputAmperage
-		// SMC Amperage is also negative on discharge, so this product is also correctly negative.
-		smcBatteryPower := info.SMC.Battery.Voltage * info.SMC.Battery.Amperage
-		// SystemPower is the absolute difference.
-		smcSystemPower := math.Abs(smcACPower - smcBatteryPower)
+	designCapF := float64(b.DesignCapacity)
+	c.HealthByMaxCapacity = int(math.Round((float64(b.MaxCapacity) / designCapF) * 100.0))
+	c.HealthByNominalCapacity = int(math.Round((float64(b.NominalCapacity) / designCapF) * 100.0))
 
-		info.SMC.Calculations = SMCCalculations{
-			ACPower:      truncate(smcACPower),
-			BatteryPower: truncate(smcBatteryPower),
-			SystemPower:  truncate(smcSystemPower),
+	var conditionModifier float64
+	if len(b.IndividualCellVoltages) > 1 {
+		minV, maxV := findMinMax(b.IndividualCellVoltages)
+		drift := maxV - minV
+		switch {
+		case drift <= 5:
+			conditionModifier = 2.5
+		case drift <= 15:
+			conditionModifier = 1.0
+		case drift <= 30:
+			conditionModifier = 0.0
+		case drift <= 50:
+			conditionModifier = -2.0
+		default:
+			conditionModifier = -10.0
 		}
+	}
+	c.ConditionAdjustedHealth = int(math.Round(float64(c.HealthByNominalCapacity) + conditionModifier))
+}
+
+// calculateIOKitPower computes power metrics based on IOKit data.
+func calculateIOKitPower(d *IOKitData) {
+	AdapterPower := d.Adapter.InputVoltage * d.Adapter.InputAmperage
+	batteryPower := d.Battery.Voltage * d.Battery.Amperage
+	systemPower := math.Abs(AdapterPower - batteryPower)
+
+	d.Calculations.AdapterPower = truncate(AdapterPower)
+	d.Calculations.BatteryPower = truncate(batteryPower)
+	d.Calculations.SystemPower = truncate(systemPower)
+}
+
+// calculateSMCMetrics populates all calculated fields for the SMCData struct.
+func calculateSMCMetrics(d *SMCData) {
+	AdapterPower := d.Adapter.InputVoltage * d.Adapter.InputAmperage
+	batteryPower := d.Battery.Voltage * d.Battery.Amperage
+	systemPower := math.Abs(AdapterPower - batteryPower)
+
+	d.Calculations = SMCCalculations{
+		AdapterPower: truncate(AdapterPower),
+		BatteryPower: truncate(batteryPower),
+		SystemPower:  truncate(systemPower),
 	}
 }

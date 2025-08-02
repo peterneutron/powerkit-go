@@ -71,7 +71,7 @@ type IOKitCalculations struct {
 	HealthByMaxCapacity     int     `json:"HealthByMaxCapacity"`
 	HealthByNominalCapacity int     `json:"HealthByNominalCapacity"`
 	ConditionAdjustedHealth int     `json:"ConditionAdjustedHealth"`
-	ACPower                 float64 `json:"ACPower"`
+	AdapterPower            float64 `json:"AdapterPower"`
 	BatteryPower            float64 `json:"BatteryPower"`
 	SystemPower             float64 `json:"SystemPower"`
 }
@@ -87,8 +87,8 @@ type SMCData struct {
 }
 
 type SMCState struct {
-	IsCharging  bool `json:"IsCharging"`   // was IsAdapterInhibited
-	IsConnected bool `json:"IsConnected "` // was IsAdapterDisabled
+	IsChargingEnabled bool `json:"IsChargingEnabled"` // was IsChargingEnabled
+	IsAdapterEnabled  bool `json:"IsAdapterEnabled"`  // was IsAdapterEnabled
 }
 
 // SMCBattery holds raw battery-related sensor readings from the SMC.
@@ -105,7 +105,7 @@ type SMCAdapter struct {
 
 // SMCCalculations holds power metrics derived purely from SMC sensor readings.
 type SMCCalculations struct {
-	ACPower      float64 `json:"ACPower"`
+	AdapterPower float64 `json:"AdapterPower"`
 	BatteryPower float64 `json:"BatteryPower"`
 	SystemPower  float64 `json:"SystemPower"`
 }
