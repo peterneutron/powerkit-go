@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/user"
+	"time"
 
 	"github.com/peterneutron/powerkit-go/pkg/powerkit"
 )
@@ -29,6 +30,8 @@ func main() {
 		handleDumpCommand(commandGroup)
 	case "raw":
 		handleRawCommand(os.Args[2:])
+	case "watch": // New command
+		handleWatchCommand()
 
 	// Write commands (two words)
 	case "adapter", "charging":
@@ -67,6 +70,7 @@ func printUsage() {
 	fmt.Println("  iokit        Dump curated SystemInfo from IOKit only")
 	fmt.Println("  smc          Dump curated SystemInfo from SMC only")
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
+	fmt.Println("  watch        Stream real-time power events as they happen")
 
 	fmt.Println("\nControl Commands:")
 	fmt.Println("  adapter <on|off>                Enable or disable the adapter connection (requires sudo)")
@@ -76,6 +80,28 @@ func printUsage() {
 
 	fmt.Println("\nOther Commands:")
 	fmt.Println("  help         Show this help message")
+}
+
+// --- NEW: Watch Command Handler ---
+func handleWatchCommand() {
+	fmt.Println("Watching for power events... Press Ctrl+C to exit.")
+
+	infoChan, err := powerkit.StreamSystemInfo()
+	if err != nil {
+		log.Fatalf("Error starting watch stream: %v", err)
+	}
+
+	for info := range infoChan {
+		jsonData, err := json.MarshalIndent(info, "", "  ")
+		if err != nil {
+			log.Printf("Error formatting data to JSON: %v", err)
+			continue
+		}
+		// Clear screen sequence for a cleaner live view
+		fmt.Print("\033[H\033[2J")
+		fmt.Printf("--- Event Received at %s ---\n", time.Now().Format(time.RFC3339))
+		fmt.Println(string(jsonData))
+	}
 }
 
 // --- Universal Write Command Handler ---

@@ -11,6 +11,60 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
+// StreamSystemInfo starts monitoring IOKit for power-related events and returns
+// a read-only channel that will receive a SystemInfo object whenever a
+// change is detected. The returned object will only contain IOKit data.
+func StreamSystemInfo() (<-chan *SystemInfo, error) {
+	// This channel will be returned to the caller.
+	systemInfoChan := make(chan *SystemInfo)
+
+	// Start the low-level IOKit monitor. This spawns a goroutine with a C RunLoop.
+	iokit.StartMonitor()
+
+	// Launch a processor goroutine. This goroutine bridges the raw notification
+	// signal to a high-level, IOKit-focused SystemInfo object.
+	go func() {
+		// Ensure the channel is closed when the loop exits, signaling the end of the stream.
+		defer close(systemInfoChan)
+
+		// The first event should be sent immediately to provide the initial state.
+		// A non-blocking send ensures we don't stall if the consumer isn't ready.
+		select {
+		case iokit.Updates <- struct{}{}:
+		default:
+		}
+
+		for range iokit.Updates {
+			// When a signal is received, fetch ONLY the fresh IOKit data.
+			// Do NOT call the generic GetSystemInfo() here.
+			iokitRawData, err := iokit.FetchData()
+			if err != nil {
+				log.Printf("Error fetching IOKit data in stream: %v", err)
+				continue // Skip this update on error
+			}
+
+			// Construct a new SystemInfo object containing only the data
+			// relevant to this event stream.
+			info := &SystemInfo{
+				OS: OSInfo{
+					Mode: currentSMCConfig.Mode,
+				},
+				IOKit: newIOKitData(iokitRawData),
+				SMC:   nil, // Explicitly set SMC to nil for clarity.
+			}
+
+			// Populate derived calculations for the IOKit part.
+			// This function is safe as it checks for nil pointers.
+			calculateDerivedMetrics(info)
+
+			// Send the processed, IOKit-only info object to the consumer.
+			systemInfoChan <- info
+		}
+	}()
+
+	return systemInfoChan, nil
+}
+
 // GetSystemInfo is the primary entrypoint to the library.
 // It acts as a high-level coordinator for fetching and processing data.
 func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
