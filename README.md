@@ -11,6 +11,7 @@ A comprehensive Go library for monitoring and controlling macOS power features. 
 
 ## Features
 
+*   **Real-time Event Streaming:** Supports real-time event streaming for power-related events from `IOKit`
 *   **Dual Source Data:** Access both the high-level `IOKit` registry and the low-level `SMC` for a complete power profile.
 *   **Hardware Control:** Enable/disable charging, connect/disconnect the AC adapter, and change the MagSafe LED color (requires root privileges).
 *   **Source-Centric API:** The primary API returns a clean, structured `SystemInfo` object that strictly separates data by its source, eliminating ambiguity.
@@ -199,7 +200,56 @@ info, err := powerkit.GetSystemInfo(options)
 // The output JSON will have no "IOKit" key.
 ```
 
-### 4. Power User: Raw SMC Key Queries
+### 4. Advanced Usage: Real-time Event Streaming
+
+The powerkit library supports real-time event streaming for power-related events from `IOKit`. This is the most efficient way to monitor for changes like plugging in an adapter, battery percentage changes, or when charging starts or stops, as it avoids constant polling.
+
+**Important Considerations:**
+
+*   **Event-Driven:** The stream is driven by IOKit's notification system. It is **not** a high-frequency ticker. Updates are sent only when the system deems a property change significant. This means minor fluctuations in voltage may not trigger an update, but connecting a power adapter will.
+*   **IOKit Data Only:** The streaming API exclusively provides data sourced from IOKit. Information from the SMC is not included in the stream and must be fetched separately using the polling function `GetSystemInfo()`.
+
+#### Minimal Usage Example
+
+To use the stream, you must capture the channel returned by `StreamSystemInfo` and then range over it to process events.
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/peterneutron/powerkit-go/pkg/powerkit"
+)
+
+func main() {
+	// 1. Start the stream and get the channel.
+	// Note that we capture both the channel (`infoChan`) and the error.
+	infoChan, err := powerkit.StreamSystemInfo()
+	if err != nil {
+		log.Fatalf("Failed to start powerkit stream: %v", err)
+	}
+
+	fmt.Println("Listening for IOKit power events... Press Ctrl+C to exit.")
+
+	// 2. Loop forever, reading events from the channel.
+	// This is a blocking operation; an event will be processed as it arrives.
+	for info := range infoChan {
+		// 3. The `info` object contains the latest IOKit data.
+		// It's good practice to check for nil.
+		if info != nil && info.IOKit != nil {
+			isCharging := info.IOKit.State.IsCharging
+			chargePct := info.IOKit.Battery.CurrentCharge
+			
+			fmt.Printf("Event received: IsCharging=%v, Battery=%d%%\n", isCharging, chargePct)
+		}
+	}
+}
+```
+*Note: For a real application, you would typically run the `for...range` loop in a separate goroutine to avoid blocking your main thread.*
+
+### 5. Power User: Raw SMC Key Queries
 
 For maximum flexibility, `GetRawSMCValues()` allows you to query any custom SMC key and receive the raw, undecoded data. You are responsible for interpreting the bytes.
 
@@ -239,6 +289,10 @@ powerkit-cli smc
 
 # Perform a raw query for custom SMC keys
 powerkit-cli raw FNum TC0D PPBR
+
+# Subscribe to IOKit event stream
+powerkit-cli watch
+
 ```
 **Example Output for `raw`:**
 ```json
