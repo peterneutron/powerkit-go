@@ -4,6 +4,7 @@
 package powerkit
 
 import (
+	"github.com/peterneutron/powerkit-go/internal/os"
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
@@ -35,7 +36,7 @@ var currentSMCConfig smcControlConfig
 // The init function runs once when the package is imported.
 // It resolves which set of SMC keys and values to use based on the OS version.
 func init() {
-	majorVersion := getOSMajorVersion()
+	majorVersion := os.GetMajorVersion()
 
 	if majorVersion >= macOSMajorVersionThreshold {
 		// --- Modern Configuration (macOS 26 "Tahoe" and newer) ---
