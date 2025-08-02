@@ -27,7 +27,11 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	}
 
 	// --- Main Data Gathering ---
-	info := &SystemInfo{}
+	info := &SystemInfo{
+		OS: OSInfo{
+			Mode: currentSMCConfig.Mode,
+		},
+	}
 
 	// Fetch and populate IOKit data if requested.
 	if options.QueryIOKit {
@@ -48,7 +52,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 		// 1. Fetch the standard float values
 		smcFloatResults, err := smc.FetchData(smc.KeysToRead)
 		// 2. Fetch the specific raw values we need for the state
-		smcRawResults, rawErr := smc.FetchRawData([]string{smc.KeyIsChargingEnabled, smc.KeyIsAdapterEnabled})
+		smcRawResults, rawErr := smc.FetchRawData(smc.KeysToRead)
 		if err != nil || rawErr != nil {
 			if !options.QueryIOKit {
 				return nil, fmt.Errorf("failed to fetch required SMC data: %w", err)

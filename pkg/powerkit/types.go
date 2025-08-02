@@ -17,8 +17,16 @@ type FetchOptions struct {
 // SystemInfo is the new top-level struct that holds all hardware information,
 // cleanly separated by its source (IOKit or SMC).
 type SystemInfo struct {
+	OS    OSInfo     `json:"OS"`
 	IOKit *IOKitData `json:"IOKit,omitempty"`
 	SMC   *SMCData   `json:"SMC,omitempty"`
+}
+
+// --- OS-Specific Data Structures ---
+
+// OSInfo holds information about the operating system environment.
+type OSInfo struct {
+	Mode string `json:"Mode"` // "Modern" or "Legacy"
 }
 
 // --- IOKit-Specific Data Structures ---

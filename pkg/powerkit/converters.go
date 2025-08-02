@@ -32,21 +32,30 @@ func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSM
 		data.Battery.Amperage = truncate(val / 1000.0)
 	}
 
-	// --- 2. NEW: Populate the State struct from the rawResults ---
+	// --- Populate the State struct from the rawResults, respecting OS version ---
 
-	// Check for the CHTE key (IsChargingEnabled)
-	if chteVal, ok := rawResults[smc.KeyIsChargingEnabled]; ok {
-		// We know from our write functions that 0x01 means charging.
-		if len(chteVal.Data) > 0 && chteVal.Data[0] != 0x01 {
+	// Check for IsChargingEnabled state
+	var chargingKeyToCheck string
+	if currentSMCConfig.IsLegacyCharging {
+		chargingKeyToCheck = smc.KeyIsChargingEnabled_Legacy_BCLM
+	} else {
+		chargingKeyToCheck = smc.KeyIsChargingEnabled
+	}
+	if val, ok := rawResults[chargingKeyToCheck]; ok {
+		// Enabled is the default; we check for the disabled bytes.
+		// A value not equal to the 'disabled' state is considered 'enabled'.
+		if !bytes.Equal(val.Data, currentSMCConfig.ChargingDisableBytes) {
 			data.State.IsChargingEnabled = true
 		}
 	}
 
-	// Check for the CHIE key (IsAdapterEnabledd)
-	if chieVal, ok := rawResults[smc.KeyIsAdapterEnabled]; ok {
-		// We know from our write functions that 0x00 means connected.
-		disabledBytes := []byte{0x00}
-		data.State.IsAdapterEnabled = bytes.Equal(chieVal.Data, disabledBytes)
+	// Check for IsAdapterEnabled state
+	adapterKeyToCheck := currentSMCConfig.AdapterKey
+	if val, ok := rawResults[adapterKeyToCheck]; ok {
+		// Enabled is the default; we check for the disabled bytes.
+		if !bytes.Equal(val.Data, currentSMCConfig.AdapterDisableBytes) {
+			data.State.IsAdapterEnabled = true
+		}
 	}
 
 	return data

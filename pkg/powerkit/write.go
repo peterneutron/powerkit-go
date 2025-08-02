@@ -13,16 +13,6 @@ import (
 // ---------------  Public Write API  -------------- //
 // WARNING: These functions require root privileges. //
 
-var (
-	// For SetAdapterState (uses KeyIsAdapterEnabled)
-	adapterEnabledBytes  = []byte{0x00}
-	adapterDisabledBytes = []byte{0x08}
-
-	// For SetChargingState (uses KeyIsChargingEnabled)
-	chargingEnabledBytes  = []byte{0x00, 0x00, 0x00, 0x00}
-	chargingDisabledBytes = []byte{0x01, 0x00, 0x00, 0x00}
-)
-
 // AdapterAction sets the desired Adapter state
 type AdapterAction int
 
@@ -60,34 +50,36 @@ const (
 )
 
 func SetAdapterState(action AdapterAction) error {
+	key := currentSMCConfig.AdapterKey
+
 	switch action {
 	case AdapterActionOn:
-		fmt.Println("Forcing charger ON...")
-		return smc.WriteData(smc.KeyIsAdapterEnabled, adapterEnabledBytes)
+		fmt.Println("Forcing adapter ON...")
+		return smc.WriteData(key, currentSMCConfig.AdapterEnableBytes)
 
 	case AdapterActionOff:
-		fmt.Println("Forcing charger OFF...")
-		return smc.WriteData(smc.KeyIsAdapterEnabled, adapterDisabledBytes)
+		fmt.Println("Forcing adapter OFF...")
+		return smc.WriteData(key, currentSMCConfig.AdapterDisableBytes)
 
 	case AdapterActionToggle:
-		fmt.Println("Reading current charger state to perform toggle...")
-		rawValues, err := GetRawSMCValues([]string{smc.KeyIsAdapterEnabled})
+		fmt.Println("Reading current adapter state to perform toggle...")
+		rawValues, err := GetRawSMCValues([]string{key})
 		if err != nil {
-			return fmt.Errorf("could not read current charger state: %w", err)
+			return fmt.Errorf("could not read current adapter state: %w", err)
 		}
 
-		chargerValue, ok := rawValues[smc.KeyIsAdapterEnabled]
+		adapterValue, ok := rawValues[key]
 		if !ok {
-			return fmt.Errorf("could not find key '%s' on this system", smc.KeyIsAdapterEnabled)
+			return fmt.Errorf("could not find key '%s' on this system", key)
 		}
 
-		isChargerDisabled := bytes.Equal(chargerValue.Data, adapterDisabledBytes)
+		isAdapterDisabled := bytes.Equal(adapterValue.Data, currentSMCConfig.AdapterDisableBytes)
 
-		if isChargerDisabled {
-			fmt.Println("Charger is currently OFF. Toggling ON...")
+		if isAdapterDisabled {
+			fmt.Println("Adapter is currently OFF. Toggling ON...")
 			return SetAdapterState(AdapterActionOn)
 		} else {
-			fmt.Println("Charger is currently ON. Toggling OFF...")
+			fmt.Println("Adapter is currently ON. Toggling OFF...")
 			return SetAdapterState(AdapterActionOff)
 		}
 
@@ -100,25 +92,47 @@ func SetChargingState(action ChargingAction) error {
 	switch action {
 	case ChargingActionOn:
 		fmt.Println("Forcing charging ON...")
-		return smc.WriteData(smc.KeyIsChargingEnabled, chargingEnabledBytes)
+		if currentSMCConfig.IsLegacyCharging {
+			for _, key := range currentSMCConfig.ChargingKeysLegacy {
+				if err := smc.WriteData(key, currentSMCConfig.ChargingEnableBytes); err != nil {
+					return fmt.Errorf("failed to write to legacy charging key '%s': %w", key, err)
+				}
+			}
+			return nil
+		}
+		return smc.WriteData(currentSMCConfig.ChargingKeyModern, currentSMCConfig.ChargingEnableBytes)
 
 	case ChargingActionOff:
 		fmt.Println("Forcing charging OFF...")
-		return smc.WriteData(smc.KeyIsChargingEnabled, chargingDisabledBytes)
+		if currentSMCConfig.IsLegacyCharging {
+			for _, key := range currentSMCConfig.ChargingKeysLegacy {
+				if err := smc.WriteData(key, currentSMCConfig.ChargingDisableBytes); err != nil {
+					return fmt.Errorf("failed to write to legacy charging key '%s': %w", key, err)
+				}
+			}
+			return nil
+		}
+		return smc.WriteData(currentSMCConfig.ChargingKeyModern, currentSMCConfig.ChargingDisableBytes)
 
 	case ChargingActionToggle:
 		fmt.Println("Reading current charging state to perform toggle...")
-		rawValues, err := GetRawSMCValues([]string{smc.KeyIsChargingEnabled})
+		// For toggle, we only need to read one key to determine the state.
+		keyToRead := currentSMCConfig.ChargingKeyModern
+		if currentSMCConfig.IsLegacyCharging {
+			keyToRead = currentSMCConfig.ChargingKeysLegacy[0] // BCLM is sufficient
+		}
+
+		rawValues, err := GetRawSMCValues([]string{keyToRead})
 		if err != nil {
 			return fmt.Errorf("could not read current charging state: %w", err)
 		}
 
-		chargerValue, ok := rawValues[smc.KeyIsChargingEnabled]
+		chargerValue, ok := rawValues[keyToRead]
 		if !ok {
-			return fmt.Errorf("could not find key '%s' on this system", smc.KeyIsChargingEnabled)
+			return fmt.Errorf("could not find key '%s' on this system", keyToRead)
 		}
 
-		isChargingDisabled := bytes.Equal(chargerValue.Data, chargingDisabledBytes)
+		isChargingDisabled := bytes.Equal(chargerValue.Data, currentSMCConfig.ChargingDisableBytes)
 
 		if isChargingDisabled {
 			fmt.Println("Charging is currently OFF. Toggling ON...")
@@ -155,4 +169,45 @@ func SetMagsafeLEDColor(color MagsafeColor) error {
 
 	// Call the internal, generic write function.
 	return smc.WriteData(smc.KeyMagsafeLED, data)
+}
+
+// GetMagsafeLEDColor reads the current color of the Magsafe charging LED.
+func GetMagsafeLEDColor() (MagsafeColor, error) {
+	rawValues, err := GetRawSMCValues([]string{smc.KeyMagsafeLED})
+	if err != nil {
+		return LEDOff, fmt.Errorf("could not read Magsafe LED state from SMC: %w", err)
+	}
+
+	ledValue, ok := rawValues[smc.KeyMagsafeLED]
+	if !ok {
+		return LEDOff, fmt.Errorf("could not find Magsafe LED key '%s' on this system", smc.KeyMagsafeLED)
+	}
+
+	// The ACLC key's data is 2 bytes. Byte 0 is the LED ID, Byte 1 is the color code.
+	if ledValue.DataSize < 2 {
+		return LEDOff, fmt.Errorf("unexpected data size for Magsafe LED key: got %d bytes, want at least 2", ledValue.DataSize)
+	}
+
+	colorCode := ledValue.Data[1]
+	switch colorCode {
+	case 0x00:
+		return LEDOff, nil
+	case 0x01:
+		return LEDAmber, nil
+	case 0x02:
+		return LEDGreen, nil
+	default:
+		// Other states exist but are not mapped to our public enum.
+		// Returning an error for unhandled states is the safest approach.
+		return LEDOff, fmt.Errorf("unknown Magsafe LED color code received: 0x%02x", colorCode)
+	}
+}
+
+// IsMagsafeCharging checks if the Magsafe LED indicates a charging state (Amber).
+func IsMagsafeCharging() (bool, error) {
+	color, err := GetMagsafeLEDColor()
+	if err != nil {
+		return false, fmt.Errorf("could not determine Magsafe charging state: %w", err)
+	}
+	return color == LEDAmber, nil
 }

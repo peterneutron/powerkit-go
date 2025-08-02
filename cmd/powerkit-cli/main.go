@@ -39,6 +39,14 @@ func main() {
 		action := os.Args[2]
 		handleWriteCommand(commandGroup, action)
 
+	case "magsafe":
+		if len(os.Args) < 3 {
+			log.Fatalf("Error: 'magsafe' command requires a subcommand ('get-color' or 'set-color').")
+		}
+		subcommand := os.Args[2]
+		args := os.Args[3:]
+		handleMagsafeCommand(subcommand, args)
+
 	// Help and default
 	case "help":
 		printUsage()
@@ -60,45 +68,48 @@ func printUsage() {
 	fmt.Println("  smc          Dump curated SystemInfo from SMC only")
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
 
-	fmt.Println("\nWrite Commands (may require sudo):")
-	fmt.Println("  adapter on   Connect the battery to the charger")
-	fmt.Println("  adapter off  Disconnect the battery from the charger (using CHIE)")
-	fmt.Println("  charging on  Allow battery to charge to 100% (using BCLM)")
-	fmt.Println("  charging off Set max charge level to current level (using BCLM)")
+	fmt.Println("\nControl Commands:")
+	fmt.Println("  adapter <on|off>                Enable or disable the adapter connection (requires sudo)")
+	fmt.Println("  charging <on|off>               Enable or disable battery charging (requires sudo)")
+	fmt.Println("  magsafe get-color               Get the current Magsafe LED color")
+	fmt.Println("  magsafe set-color <color>       Set the Magsafe LED color (off, amber, green) (requires sudo)")
 
 	fmt.Println("\nOther Commands:")
 	fmt.Println("  help         Show this help message")
 }
 
-// --- NEW: Universal Write Command Handler ---
+// --- Universal Write Command Handler ---
 func handleWriteCommand(group, action string) {
 	checkRoot() // All write commands require the root check.
 
 	var err error
 	var successMsg string
 
-	if group == "adapter" {
-		if action == "on" {
+	switch group {
+	case "adapter":
+		switch action {
+		case "on":
 			fmt.Println("Attempting to enable the charger...")
 			err = powerkit.SetAdapterState(powerkit.AdapterActionOn)
 			successMsg = "Successfully enabled the charger."
-		} else if action == "off" {
+		case "off":
 			fmt.Println("Attempting to disable the charger...")
 			err = powerkit.SetAdapterState(powerkit.AdapterActionOff)
 			successMsg = "Successfully disabled the charger."
-		} else {
+		default:
 			log.Fatalf("Error: invalid action '%s' for 'adapter' command. Use 'on' or 'off'.", action)
 		}
-	} else if group == "charging" {
-		if action == "on" {
+	case "charging":
+		switch action {
+		case "on":
 			fmt.Println("Attempting to enable charging")
 			err = powerkit.SetChargingState(powerkit.ChargingActionOn)
 			successMsg = "Successfully enabled charging."
-		} else if action == "off" {
+		case "off":
 			fmt.Println("Attempting to disable charging")
 			err = powerkit.SetChargingState(powerkit.ChargingActionOff)
 			successMsg = "Successfully disabled charging."
-		} else {
+		default:
 			log.Fatalf("Error: invalid action '%s' for 'charging' command. Use 'on' or 'off'.", action)
 		}
 	}
@@ -107,6 +118,69 @@ func handleWriteCommand(group, action string) {
 		log.Fatalf("Command failed: %v", err)
 	}
 	fmt.Println(successMsg)
+}
+
+// --- Magsafe Command Handler ---
+
+// MagsafeColorToString converts the enum to a human-readable string for printing.
+func MagsafeColorToString(c powerkit.MagsafeColor) string {
+	switch c {
+	case powerkit.LEDOff:
+		return "Off"
+	case powerkit.LEDAmber:
+		return "Amber"
+	case powerkit.LEDGreen:
+		return "Green"
+	default:
+		return "Unknown"
+	}
+}
+
+func handleMagsafeCommand(subcommand string, args []string) {
+	switch subcommand {
+	case "get-color":
+		color, err := powerkit.GetMagsafeLEDColor()
+		if err != nil {
+			log.Fatalf("Error getting Magsafe LED color: %v", err)
+		}
+		fmt.Printf("Current Magsafe LED color: %s\n", MagsafeColorToString(color))
+
+	case "set-color":
+		checkRoot()
+		if len(args) < 1 {
+			log.Fatalf("Error: 'set-color' requires a color argument (off, amber, green).")
+		}
+		colorStr := args[0]
+		var color powerkit.MagsafeColor
+		var validColor = true
+
+		switch colorStr {
+		case "off":
+			color = powerkit.LEDOff
+		case "amber":
+			color = powerkit.LEDAmber
+		case "green":
+			color = powerkit.LEDGreen
+		default:
+			validColor = false
+		}
+
+		if !validColor {
+			log.Fatalf("Error: invalid color '%s'. Use 'off', 'amber', or 'green'.", colorStr)
+		}
+
+		fmt.Printf("Attempting to set Magsafe LED to %s...\n", colorStr)
+		err := powerkit.SetMagsafeLEDColor(color)
+		if err != nil {
+			log.Fatalf("Command failed: %v", err)
+		}
+		fmt.Println("Successfully set Magsafe LED color.")
+
+	default:
+		fmt.Printf("Error: unknown subcommand '%s' for 'magsafe'.\n\n", subcommand)
+		printUsage()
+		os.Exit(1)
+	}
 }
 
 // checkRoot checks for root privileges.
