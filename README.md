@@ -93,7 +93,7 @@ func main() {
       "HealthByMaxCapacity": 89,
       "HealthByNominalCapacity": 92,
       "ConditionAdjustedHealth": 95,
-      "ACPower": 0,
+      "AdapterPower": 0,
       "BatteryPower": -5.45,
       "SystemPower": 5.45
     }
@@ -112,7 +112,7 @@ func main() {
       "InputAmperage": 0
     },
     "Calculations": {
-      "ACPower": 0,
+      "AdapterPower": 0,
       "BatteryPower": -4.77,
       "SystemPower": 4.77
     }
