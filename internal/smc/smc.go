@@ -10,7 +10,6 @@ package smc
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <string.h>
-#include <libkern/OSByteOrder.h> // For OSSwap... functions
 
 #define KERNEL_INDEX_SMC 2
 #define SMC_CMD_READ_BYTES 5
@@ -55,9 +54,8 @@ typedef struct {
 } SMCKeyData_t;
 
 // --- C Helper Function Declarations ---
-kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value);
 
-// This is the read function for the raw/generic API.
+// Reads the raw metadata and byte value for a given SMC key.
 kern_return_t smc_read_key_raw(
     io_connect_t conn,
     const char* key,
@@ -66,7 +64,7 @@ kern_return_t smc_read_key_raw(
     UInt32* dataSizeResult
 );
 
-// This is the write function for the non-generic API
+// Writes raw bytes to a given SMC key.
 kern_return_t smc_write_key(
     io_connect_t conn,
     const char* key,
@@ -104,84 +102,8 @@ static kern_return_t smc_call(io_connect_t conn, SMCKeyData_t *input, SMCKeyData
     return IOConnectCallStructMethod(conn, KERNEL_INDEX_SMC, input, structSize, output, &structSize);
 }
 
-// --- SMC_READ_KEY Function ---
-kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
-    SMCKeyData_t input;
-    SMCKeyData_t output;
-    size_t structSize = sizeof(SMCKeyData_t);
-
-    memset(&input, 0, structSize);
-    memset(&output, 0, structSize);
-
-    input.key = str_to_key(key);
-    input.data8 = SMC_CMD_READ_KEYINFO;
-
-    kern_return_t kr = smc_call(conn, &input, &output);
-    if (kr != KERN_SUCCESS || output.result != 0) {
-        return KERN_FAILURE;
-    }
-
-    // Prepare for the second call
-    input.keyInfo = output.keyInfo; // Save the metadata
-    input.data8 = SMC_CMD_READ_BYTES;
-
-    // *** CRITICAL FIX #1: Reset the output struct before the second call. ***
-    memset(&output, 0, structSize);
-
-    kr = smc_call(conn, &input, &output);
-    if (kr != KERN_SUCCESS || output.result != 0) {
-        return KERN_FAILURE;
-    }
-
-    // --- Universal Translator Logic ---
-    char dataTypeStr[5];
-    // *** CRITICAL FIX #2: Use the saved metadata from `input`, not `output`. ***
-    key_to_str(input.keyInfo.dataType, dataTypeStr);
-    UInt32 dataSize = input.keyInfo.dataSize;
-
-    if (strcmp(dataTypeStr, "flt ") == 0 && dataSize == 4) {
-        union { uint32_t i; float f; } val;
-        memcpy(&val.i, output.bytes, 4);
-        val.i = OSSwapLittleToHostInt32(val.i);
-        *value = val.f;
-    } else if (strcmp(dataTypeStr, "sp78") == 0 && dataSize == 2) {
-        int16_t raw_value;
-        memcpy(&raw_value, output.bytes, 2);
-        raw_value = OSSwapLittleToHostInt16(raw_value);
-        *value = (float)raw_value / 256.0f;
-    } else if (strcmp(dataTypeStr, "fpe2") == 0 && dataSize == 2) {
-        uint16_t raw_value;
-        memcpy(&raw_value, output.bytes, 2);
-        raw_value = OSSwapLittleToHostInt16(raw_value);
-        *value = (float)raw_value / 4.0f;
-    } else if (strcmp(dataTypeStr, "ui8 ") == 0) {
-        *value = (float)output.bytes[0];
-    } else if (strcmp(dataTypeStr, "ui16") == 0) {
-        uint16_t raw_value; memcpy(&raw_value, output.bytes, 2);
-        raw_value = OSSwapLittleToHostInt16(raw_value);
-        *value = (float)raw_value;
-    } else if (strcmp(dataTypeStr, "ui32") == 0) {
-        uint32_t raw_value; memcpy(&raw_value, output.bytes, 4);
-        raw_value = OSSwapLittleToHostInt32(raw_value);
-        *value = (float)raw_value;
-    } else if (strcmp(dataTypeStr, "si8 ") == 0) {
-        *value = (float)((int8_t)output.bytes[0]);
-    } else if (strcmp(dataTypeStr, "si16") == 0) {
-        int16_t raw_value; memcpy(&raw_value, output.bytes, 2);
-        raw_value = OSSwapLittleToHostInt16(raw_value);
-        *value = (float)raw_value;
-    } else if (strcmp(dataTypeStr, "flag") == 0) {
-        *value = (float)output.bytes[0];
-    } else {
-        return kIOReturnUnsupported;
-    }
-
-    return KERN_SUCCESS;
-}
-
-    // New Generic C Read Function
-    // This function reads raw bytes of the given SMC key.
-    kern_return_t smc_read_key_raw(
+// --- SMC_READ_KEY_RAW Function ---
+kern_return_t smc_read_key_raw(
     io_connect_t conn,
     const char* key,
     char* dataTypeResult,
@@ -213,9 +135,8 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
     return KERN_SUCCESS;
 }
 
-    // Generic C Write Function
-    // This function takes raw bytes and writes them to the given SMC key.
-    kern_return_t smc_write_key(
+// --- SMC_WRITE_KEY Function ---
+kern_return_t smc_write_key(
     io_connect_t conn,
     const char* key,
     const unsigned char* bytesToWrite,
@@ -225,34 +146,29 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
     SMCKeyData_t output;
     size_t structSize = sizeof(SMCKeyData_t);
 
-    // Read the key's full metadata first
     memset(&input, 0, structSize);
     memset(&output, 0, structSize);
     input.key = str_to_key(key);
     input.data8 = SMC_CMD_READ_KEYINFO;
     kern_return_t kr = smc_call(conn, &input, &output);
     if (kr != KERN_SUCCESS || output.result != 0) {
-        return KERN_FAILURE; // Key not found or other initial error
+        return KERN_FAILURE;
     }
 
-    // Save the complete, correct keyInfo from the hardware.
     SMCKeyData_keyInfo_t keyInfo = output.keyInfo;
 
-    // Verify the data size before proceeding.
     if (dataSize != keyInfo.dataSize) {
         return kIOReturnBadArgument;
     }
 
-    // Now, construct the WRITE payload using the retrieved metadata
     memset(&input, 0, structSize);
     memset(&output, 0, structSize);
 
     input.key = str_to_key(key);
-    input.data8 = SMC_CMD_WRITE_BYTES; // Command code 6
-    input.keyInfo = keyInfo; // Use the full, correct keyInfo
+    input.data8 = SMC_CMD_WRITE_BYTES;
+    input.keyInfo = keyInfo;
     memcpy(input.bytes, bytesToWrite, dataSize);
 
-    // Perform the final write call.
     kr = smc_call(conn, &input, &output);
     if (kr != KERN_SUCCESS || output.result != 0) {
         if (output.result != 0) {
@@ -269,59 +185,90 @@ import "C"
 
 import (
 	"fmt"
+	"sync"
 	"unsafe"
 )
 
+var (
+	smcMu       sync.Mutex
+	smcConn     C.io_connect_t
+	smcInitOnce sync.Once
+	smcInitErr  error
+)
+
+// initSMC is the internal function that performs the connection.
+func initSMC() {
+	kr := C.smc_open(&smcConn)
+	if kr != C.KERN_SUCCESS {
+		smcInitErr = fmt.Errorf("failed to open SMC connection with kern_return: %d", kr)
+	}
+}
+
+// getSMCConnection ensures the SMC connection is open and returns it.
+func getSMCConnection() (C.io_connect_t, error) {
+	smcInitOnce.Do(initSMC)
+	return smcConn, smcInitErr
+}
+
+// CloseConnection explicitly closes the shared SMC connection.
+func CloseConnection() {
+	smcMu.Lock()
+	defer smcMu.Unlock()
+
+	if smcConn != 0 {
+		C.smc_close(smcConn)
+		smcConn = 0
+		smcInitOnce = sync.Once{}
+		smcInitErr = nil
+	}
+}
+
 // RawSMCValue holds the raw, undecoded result of an SMC query.
-// It is the responsibility of the caller to decode the Data bytes
-// based on the DataType and DataSize.
 type RawSMCValue struct {
 	DataType string
 	DataSize int
 	Data     []byte
 }
 
-// FetchData retrieves a map of SMC keys and their float values.
+// FetchData retrieves a map of SMC keys and their decoded float values.
+// It works by first fetching the raw data and then decoding it.
 func FetchData(keys []string) (map[string]float64, error) {
-	var conn C.io_connect_t
-	kr := C.smc_open(&conn)
-	if kr != C.KERN_SUCCESS {
-		return nil, fmt.Errorf("failed to open SMC connection: %d", kr)
+	rawResults, err := FetchRawData(keys)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch raw SMC data: %w", err)
 	}
-	defer C.smc_close(conn)
 
-	results := make(map[string]float64)
-
-	for _, key := range keys {
-		var value C.float
-		ckey := C.CString(key)
-		defer C.free(unsafe.Pointer(ckey))
-
-		kr = C.smc_read_key(conn, ckey, &value)
-		if kr == C.KERN_SUCCESS {
-			results[key] = float64(value)
+	decodedResults := make(map[string]float64, len(rawResults))
+	for key, rawValue := range rawResults {
+		// Use the Go-side translator to decode the value.
+		decodedValue, err := decodeSMCValue(rawValue.DataType, rawValue.Data)
+		if err == nil {
+			decodedResults[key] = decodedValue
 		}
+		// Note: Keys with unsupported data types are silently ignored.
 	}
 
-	if len(results) == 0 {
-		return nil, fmt.Errorf("SMC read succeeded but no keys returned values")
+	if len(decodedResults) == 0 {
+		return nil, fmt.Errorf("SMC read succeeded but no keys could be decoded to a float value")
 	}
 
-	return results, nil
+	return decodedResults, nil
 }
 
-// FetchRawData retrieves the raw, undecoded metadata and byte values for a given
-// list of SMC keys. This is an advanced function for users who want to perform
-// their own decoding.
+// FetchRawData retrieves the raw, undecoded metadata and byte values for a given list of SMC keys.
 func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
-	var conn C.io_connect_t
-	kr := C.smc_open(&conn)
-	if kr != C.KERN_SUCCESS {
-		return nil, fmt.Errorf("failed to open SMC connection: %d", kr)
-	}
-	defer C.smc_close(conn)
+	smcMu.Lock()
+	defer smcMu.Unlock()
 
-	results := make(map[string]RawSMCValue)
+	conn, err := getSMCConnection()
+	if err != nil {
+		return nil, err
+	}
+	if conn == 0 {
+		return nil, fmt.Errorf("SMC connection is not valid")
+	}
+
+	results := make(map[string]RawSMCValue, len(keys))
 	for _, key := range keys {
 		ckey := C.CString(key)
 		defer C.free(unsafe.Pointer(ckey))
@@ -330,7 +277,7 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 		var bytesResult [32]C.uchar
 		var dataSizeResult C.UInt32
 
-		kr = C.smc_read_key_raw(
+		kr := C.smc_read_key_raw(
 			conn,
 			ckey,
 			&dataTypeResult[0],
@@ -340,7 +287,6 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 
 		if kr == C.KERN_SUCCESS {
 			dataSize := int(dataSizeResult)
-			// Make a copy of the data from the C buffer into a new Go slice
 			goBytes := C.GoBytes(unsafe.Pointer(&bytesResult[0]), C.int(dataSize))
 
 			results[key] = RawSMCValue{
@@ -349,7 +295,6 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 				Data:     goBytes,
 			}
 		}
-		// We can choose to ignore errors for single keys and just not add them to the map.
 	}
 
 	if len(results) == 0 {
@@ -358,21 +303,23 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 	return results, nil
 }
 
-// WriteData is a private, powerful function that writes raw bytes to a given SMC key.
-// It is unexported to prevent direct use from outside the powerkit library.
-// The public API will provide safe, specific wrappers around this function.
+// WriteData writes raw bytes to a given SMC key.
 func WriteData(key string, data []byte) error {
+	// This function opens its own connection to ensure write operations
+	// are atomic and don't interfere with concurrent reads on the shared connection.
 	var conn C.io_connect_t
 	kr := C.smc_open(&conn)
 	if kr != C.KERN_SUCCESS {
-		return fmt.Errorf("failed to open SMC connection: %d", kr)
+		return fmt.Errorf("failed to open SMC connection for writing: %d", kr)
 	}
 	defer C.smc_close(conn)
 
 	ckey := C.CString(key)
 	defer C.free(unsafe.Pointer(ckey))
 
-	// Get a C pointer to the Go byte slice's underlying data.
+	if len(data) == 0 {
+		return fmt.Errorf("cannot write empty data slice")
+	}
 	cBytes := (*C.uchar)(unsafe.Pointer(&data[0]))
 	cDataSize := C.UInt32(len(data))
 
