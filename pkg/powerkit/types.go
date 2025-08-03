@@ -26,7 +26,7 @@ type SystemInfo struct {
 
 // OSInfo holds information about the operating system environment.
 type OSInfo struct {
-	Mode string `json:"Mode"` // "Modern" or "Legacy"
+	Firmware string `json:"Firmware"` // "Supported", "Legacy" or "Unknown"
 }
 
 // --- IOKit-Specific Data Structures ---

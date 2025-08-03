@@ -47,7 +47,7 @@ func StreamSystemInfo() (<-chan *SystemInfo, error) {
 			// relevant to this event stream.
 			info := &SystemInfo{
 				OS: OSInfo{
-					Mode: currentSMCConfig.Mode,
+					Firmware: currentSMCConfig.Firmware,
 				},
 				IOKit: newIOKitData(iokitRawData),
 				SMC:   nil, // Explicitly set SMC to nil for clarity.
@@ -77,7 +77,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	}
 
 	info := &SystemInfo{
-		OS: OSInfo{Mode: currentSMCConfig.Mode},
+		OS: OSInfo{Firmware: currentSMCConfig.Firmware},
 	}
 
 	if options.QueryIOKit {
