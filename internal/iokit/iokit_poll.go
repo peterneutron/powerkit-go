@@ -169,43 +169,43 @@ import "fmt"
 
 // FetchData retrieves the raw battery and power data from IOKit.
 func FetchData() (*RawData, error) {
-	var c_info C.c_battery_info
+	var cInfo C.c_battery_info
 
-	ret := C.get_all_battery_info(&c_info)
+	ret := C.get_all_battery_info(&cInfo)
 	if ret != 0 {
 		return nil, fmt.Errorf("iokit query failed with C error code: %d", ret)
 	}
 
 	data := &RawData{
-		CurrentCharge:   int(c_info.state_of_charge),
-		IsCharging:      c_info.is_charging != 0,
-		IsConnected:     c_info.is_connected != 0,
-		IsFullyCharged:  c_info.is_fully_charged != 0,
-		CycleCount:      int(c_info.cycle_count),
-		DesignCapacity:  int(c_info.design_capacity),
-		MaxCapacity:     int(c_info.max_capacity),
-		NominalCapacity: int(c_info.nominal_capacity),
-		CurrentCapacity: int(c_info.current_capacity),
-		TimeToEmpty:     int(c_info.time_to_empty),
-		TimeToFull:      int(c_info.time_to_full),
-		Temperature:     int(c_info.temperature),
-		Voltage:         int(c_info.voltage),
-		Amperage:        int(c_info.amperage),
-		SerialNumber:    C.GoString(&c_info.serial_number[0]),
-		DeviceName:      C.GoString(&c_info.device_name[0]),
-		AdapterWatts:    int(c_info.adapter_watts),
-		AdapterVoltage:  int(c_info.adapter_voltage),
-		AdapterAmperage: int(c_info.adapter_amperage),
-		AdapterDesc:     C.GoString(&c_info.adapter_description[0]),
-		SourceVoltage:   int(c_info.source_voltage),
-		SourceAmperage:  int(c_info.source_amperage),
+		CurrentCharge:   int(cInfo.state_of_charge),
+		IsCharging:      cInfo.is_charging != 0,
+		IsConnected:     cInfo.is_connected != 0,
+		IsFullyCharged:  cInfo.is_fully_charged != 0,
+		CycleCount:      int(cInfo.cycle_count),
+		DesignCapacity:  int(cInfo.design_capacity),
+		MaxCapacity:     int(cInfo.max_capacity),
+		NominalCapacity: int(cInfo.nominal_capacity),
+		CurrentCapacity: int(cInfo.current_capacity),
+		TimeToEmpty:     int(cInfo.time_to_empty),
+		TimeToFull:      int(cInfo.time_to_full),
+		Temperature:     int(cInfo.temperature),
+		Voltage:         int(cInfo.voltage),
+		Amperage:        int(cInfo.amperage),
+		SerialNumber:    C.GoString(&cInfo.serial_number[0]),
+		DeviceName:      C.GoString(&cInfo.device_name[0]),
+		AdapterWatts:    int(cInfo.adapter_watts),
+		AdapterVoltage:  int(cInfo.adapter_voltage),
+		AdapterAmperage: int(cInfo.adapter_amperage),
+		AdapterDesc:     C.GoString(&cInfo.adapter_description[0]),
+		SourceVoltage:   int(cInfo.source_voltage),
+		SourceAmperage:  int(cInfo.source_amperage),
 	}
 
-	if c_info.cell_voltage_count > 0 {
-		data.CellVoltages = make([]int, c_info.cell_voltage_count)
-		c_voltages_ptr := &c_info.cell_voltages
-		for i := 0; i < int(c_info.cell_voltage_count); i++ {
-			data.CellVoltages[i] = int(c_voltages_ptr[i])
+	if cInfo.cell_voltage_count > 0 {
+		data.CellVoltages = make([]int, cInfo.cell_voltage_count)
+		cVoltagesPtr := &cInfo.cell_voltages
+		for i := 0; i < int(cInfo.cell_voltage_count); i++ {
+			data.CellVoltages[i] = int(cVoltagesPtr[i])
 		}
 	}
 	return data, nil

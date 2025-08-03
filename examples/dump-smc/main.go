@@ -1,3 +1,4 @@
+// This program demonstrates how to dump SMC power info.
 package main
 
 import (

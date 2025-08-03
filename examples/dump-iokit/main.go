@@ -1,3 +1,4 @@
+// This program demonstrates how to dump IOKit power info.
 package main
 
 import (

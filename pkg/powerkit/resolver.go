@@ -55,12 +55,12 @@ func init() {
 		// --- Legacy Configuration (macOS 15 "Sequoia" and older) ---
 		currentSMCConfig = smcControlConfig{
 			Mode:                "Legacy",
-			AdapterKey:          smc.KeyIsAdapterEnabled_Legacy,
+			AdapterKey:          smc.KeyIsAdapterEnabledLegacy,
 			AdapterEnableBytes:  []byte{0x00},
 			AdapterDisableBytes: []byte{0x01}, // Note the different value
 
 			IsLegacyCharging:     true,
-			ChargingKeysLegacy:   []string{smc.KeyIsChargingEnabled_Legacy_BCLM, smc.KeyIsChargingEnabled_Legacy_BCDS},
+			ChargingKeysLegacy:   []string{smc.KeyIsChargingEnabledLegacyBCLM, smc.KeyIsChargingEnabledLegacyBCDS},
 			ChargingEnableBytes:  []byte{0x00},
 			ChargingDisableBytes: []byte{0x02}, // Note the different value
 		}

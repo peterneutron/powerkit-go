@@ -1,7 +1,7 @@
 //go:build darwin
 // +build darwin
 
-// Package powerassert provides a simple, high-level wrapper around macOS power
+// Package powerd provides a simple, high-level wrapper around macOS power
 // assertions to prevent the system or display from sleeping using IOPMLib.
 package powerd
 
@@ -68,7 +68,7 @@ const (
 	PreventDisplaySleep
 )
 
-// We'll export the C type for our return value
+// AssertionID is a Go-native type for the underlying C IOPMAssertionID.
 type AssertionID uint32
 
 var (

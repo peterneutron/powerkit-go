@@ -1,0 +1,44 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - revive
+    - unconvert
+    - tparallel
+    - whitespace
+
+linters-settings:
+  govet:
+    settings:
+      shadow:
+        check: true
+
+  stylecheck:
+    checks:
+      - all
+      - -ST1000
+
+# <— New section for code formatters —>
+formatters:
+  enable:
+    - gofmt       # check/fix via `gofmt`
+    - goimports   # check/fix via `goimports`
+  settings:
+    gofmt:
+      simplify: false        # gofmt’s `-s` rules
+    goimports:
+      local-prefixes:
+        - github.com/peterneutron/powerkit-go
+
+issues:
+  exclude-use-default: false
+  max-same-issues: 0

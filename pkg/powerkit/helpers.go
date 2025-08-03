@@ -1,4 +1,5 @@
-// pkg/powerkit/helpers.go
+// Package powerkit provides a high-level API for querying and controlling
+// macOS power management features.
 package powerkit
 
 import (
@@ -11,21 +12,21 @@ func truncate(f float64) float64 {
 	return math.Trunc(f*100) / 100
 }
 
-// findMinMax finds the min and max values in a slice of integers.
+// findMinMax finds the minVal and maxVal values in a slice of integers.
 // (This is also a helper, so it's good to move it here from calculations.go)
-func findMinMax(a []int) (min int, max int) {
+func findMinMax(a []int) (minVal int, maxVal int) {
 	if len(a) == 0 {
 		return 0, 0
 	}
-	min = a[0]
-	max = a[0]
+	minVal = a[0]
+	maxVal = a[0]
 	for _, value := range a {
-		if value < min {
-			min = value
+		if value < minVal {
+			minVal = value
 		}
-		if value > max {
-			max = value
+		if value > maxVal {
+			maxVal = value
 		}
 	}
-	return min, max
+	return minVal, maxVal
 }

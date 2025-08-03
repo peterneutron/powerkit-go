@@ -1,3 +1,4 @@
+// This program demonstrates how to query for custom SMC keys.
 package main
 
 import (

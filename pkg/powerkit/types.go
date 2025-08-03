@@ -39,7 +39,7 @@ type IOKitData struct {
 	Calculations IOKitCalculations `json:"Calculations"`
 }
 
-// State holds booleans describing the current charging status, sourced from IOKit.
+// IOKitState holds booleans describing the current charging status, sourced from IOKit.
 type IOKitState struct {
 	IsCharging   bool `json:"IsCharging"`
 	IsConnected  bool `json:"IsConnected"`
@@ -94,6 +94,7 @@ type SMCData struct {
 	Calculations SMCCalculations `json:"Calculations"`
 }
 
+// SMCState holds booleans describing the adapter and charging enable/disable state.
 type SMCState struct {
 	IsChargingEnabled bool `json:"IsChargingEnabled"` // was IsChargingEnabled
 	IsAdapterEnabled  bool `json:"IsAdapterEnabled"`  // was IsAdapterEnabled

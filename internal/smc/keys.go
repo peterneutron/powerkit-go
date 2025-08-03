@@ -1,4 +1,4 @@
-// internal/smc/keys.go
+// Package smc provides internal access to the System Management Controller.
 package smc
 
 // SMC Key Constants
@@ -12,13 +12,13 @@ const (
 	KeyBatteryCurrent = "B0AC"
 
 	// Adapter Control
-	KeyIsAdapterEnabled        = "CHIE" // macOS >= 26.x only
-	KeyIsAdapterEnabled_Legacy = "CH0B" // macOS < 26.x only
+	KeyIsAdapterEnabled       = "CHIE" // macOS >= 26.x only
+	KeyIsAdapterEnabledLegacy = "CH0B" // macOS < 26.x only
 
 	// Charge Control
-	KeyIsChargingEnabled             = "CHTE" // macOS >= 26.x only
-	KeyIsChargingEnabled_Legacy_BCLM = "BCLM" // macOS < 26.x only
-	KeyIsChargingEnabled_Legacy_BCDS = "BCDS" // macOS < 26.x only
+	KeyIsChargingEnabled           = "CHTE" // macOS >= 26.x only
+	KeyIsChargingEnabledLegacyBCLM = "BCLM" // macOS < 26.x only
+	KeyIsChargingEnabledLegacyBCDS = "BCDS" // macOS < 26.x only
 
 	// Magsafe LED Control
 	KeyMagsafeLED = "ACLC"
@@ -33,8 +33,8 @@ var KeysToRead = []string{
 	KeyIsAdapterEnabled,
 	KeyIsChargingEnabled,
 	KeyIsAdapterEnabled,
-	KeyIsAdapterEnabled_Legacy,
+	KeyIsAdapterEnabledLegacy,
 	KeyIsChargingEnabled,
-	KeyIsChargingEnabled_Legacy_BCLM,
-	KeyIsChargingEnabled_Legacy_BCDS,
+	KeyIsChargingEnabledLegacyBCLM,
+	KeyIsChargingEnabledLegacyBCDS,
 }

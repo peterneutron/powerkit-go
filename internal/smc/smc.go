@@ -1,6 +1,7 @@
 //go:build darwin
 // +build darwin
 
+// Package smc provides internal access to the System Management Controller.
 package smc
 
 /*
@@ -357,7 +358,7 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 	return results, nil
 }
 
-// writeData is a private, powerful function that writes raw bytes to a given SMC key.
+// WriteData is a private, powerful function that writes raw bytes to a given SMC key.
 // It is unexported to prevent direct use from outside the powerkit library.
 // The public API will provide safe, specific wrappers around this function.
 func WriteData(key string, data []byte) error {

@@ -1,3 +1,4 @@
+// This program demonstrates how to dump all system power info.
 package main
 
 import (

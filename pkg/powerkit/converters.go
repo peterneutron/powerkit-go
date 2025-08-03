@@ -37,7 +37,7 @@ func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSM
 	// Check for IsChargingEnabled state
 	var chargingKeyToCheck string
 	if currentSMCConfig.IsLegacyCharging {
-		chargingKeyToCheck = smc.KeyIsChargingEnabled_Legacy_BCLM
+		chargingKeyToCheck = smc.KeyIsChargingEnabledLegacyBCLM
 	} else {
 		chargingKeyToCheck = smc.KeyIsChargingEnabled
 	}
