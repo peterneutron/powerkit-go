@@ -25,7 +25,9 @@ func main() {
 	fmt.Println("Querying for raw, direct power sensor readings from the SMC:")
 
 	// The user is responsible for decoding the raw bytes.
-	for key, val := range rawValues {
+	for key := range rawValues {
+		val := rawValues[key] // Get the value once inside the loop.
+
 		fmt.Printf("\n--- Key: %s ---\n", key)
 		fmt.Printf("  - Type:      %s\n", val.DataType)
 		fmt.Printf("  - Size:      %d bytes\n", val.DataSize)

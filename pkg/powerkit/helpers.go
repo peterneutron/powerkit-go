@@ -3,7 +3,13 @@
 package powerkit
 
 import (
+	"fmt"
 	"math"
+
+	"log"
+
+	"github.com/peterneutron/powerkit-go/internal/iokit"
+	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
 // truncate rounds a float down to two decimal places. This is used
@@ -29,4 +35,47 @@ func findMinMax(a []int) (minVal int, maxVal int) {
 		}
 	}
 	return minVal, maxVal
+}
+
+// We'll create a helper function for the "On" and "Off" logic.
+func setCharging(enable bool) error {
+	var bytesToWrite []byte
+	if enable {
+		fmt.Println("Forcing charging ON...")
+		bytesToWrite = currentSMCConfig.ChargingEnableBytes
+	} else {
+		fmt.Println("Forcing charging OFF...")
+		bytesToWrite = currentSMCConfig.ChargingDisableBytes
+	}
+
+	if currentSMCConfig.IsLegacyCharging {
+		for _, key := range currentSMCConfig.ChargingKeysLegacy {
+			if err := smc.WriteData(key, bytesToWrite); err != nil {
+				return fmt.Errorf("failed to write to legacy charging key '%s': %w", key, err)
+			}
+		}
+		return nil
+	}
+	return smc.WriteData(currentSMCConfig.ChargingKeyModern, bytesToWrite)
+}
+
+// Create a helper for fetching IOKit data
+func getIOKitInfo(info *SystemInfo) {
+	iokitRawData, err := iokit.FetchData()
+	if err != nil {
+		log.Printf("Warning: IOKit data fetch failed, continuing without it: %v", err)
+		return
+	}
+	info.IOKit = newIOKitData(iokitRawData)
+}
+
+// Create a helper for fetching SMC data
+func getSMCInfo(info *SystemInfo) {
+	smcFloatResults, err1 := smc.FetchData(smc.KeysToRead)
+	smcRawResults, err2 := smc.FetchRawData(smc.KeysToRead) // Use correct keys
+	if err1 != nil || err2 != nil {
+		log.Printf("Warning: SMC data fetch failed, continuing without it. FltErr: %v, RawErr: %v", err1, err2)
+		return
+	}
+	info.SMC = newSMCData(smcFloatResults, smcRawResults)
 }

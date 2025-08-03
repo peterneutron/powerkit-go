@@ -68,11 +68,7 @@ func StreamSystemInfo() (<-chan *SystemInfo, error) {
 // GetSystemInfo is the primary entrypoint to the library.
 // It acts as a high-level coordinator for fetching and processing data.
 func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
-	// --- Configuration Handling ---
-	options := FetchOptions{
-		QueryIOKit: true,
-		QuerySMC:   true,
-	}
+	options := FetchOptions{QueryIOKit: true, QuerySMC: true}
 	if len(opts) > 0 {
 		options = opts[0]
 	}
@@ -80,47 +76,23 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 		return nil, fmt.Errorf("FetchOptions must specify at least one data source")
 	}
 
-	// --- Main Data Gathering ---
 	info := &SystemInfo{
-		OS: OSInfo{
-			Mode: currentSMCConfig.Mode,
-		},
+		OS: OSInfo{Mode: currentSMCConfig.Mode},
 	}
 
-	// Fetch and populate IOKit data if requested.
 	if options.QueryIOKit {
-		iokitRawData, err := iokit.FetchData()
-		if err != nil {
-			if !options.QuerySMC {
-				return nil, fmt.Errorf("failed to fetch required IOKit data: %w", err)
-			}
-			log.Printf("Warning: IOKit data fetch failed, continuing with SMC: %v", err)
-		} else {
-			// The main function's logic is now clean. It just calls the constructor.
-			info.IOKit = newIOKitData(iokitRawData)
-		}
+		getIOKitInfo(info)
 	}
-
-	// Fetch and populate SMC data if requested.
 	if options.QuerySMC {
-		// 1. Fetch the standard float values
-		smcFloatResults, err := smc.FetchData(smc.KeysToRead)
-		// 2. Fetch the specific raw values we need for the state
-		smcRawResults, rawErr := smc.FetchRawData(smc.KeysToRead)
-		if err != nil || rawErr != nil {
-			if !options.QueryIOKit {
-				return nil, fmt.Errorf("failed to fetch required SMC data: %w", err)
-			}
-			log.Printf("Warning: could not fetch SMC data: %v", err)
-		} else {
-			// The logic is clean here too.
-			info.SMC = newSMCData(smcFloatResults, smcRawResults)
-		}
+		getSMCInfo(info)
 	}
 
-	// Populate derived calculations.
-	calculateDerivedMetrics(info)
+	// Final check: if both failed, we have nothing to return.
+	if info.IOKit == nil && info.SMC == nil {
+		return nil, fmt.Errorf("failed to fetch data from all sources")
+	}
 
+	calculateDerivedMetrics(info)
 	return info, nil
 }
 
@@ -137,8 +109,9 @@ func GetRawSMCValues(keys []string) (map[string]RawSMCValue, error) {
 	// The internal smc.RawSMCValue struct is identical to our public one,
 	// but it's a best practice to convert between them to keep the packages decoupled.
 	// This also makes it easy to change the public API later without breaking the internal code.
-	results := make(map[string]RawSMCValue)
-	for key, val := range rawResults {
+	results := make(map[string]RawSMCValue, len(rawResults))
+	for key := range rawResults {
+		val := rawResults[key]
 		results[key] = RawSMCValue{
 			DataType: val.DataType,
 			DataSize: val.DataSize,

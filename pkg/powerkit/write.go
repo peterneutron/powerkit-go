@@ -94,28 +94,10 @@ func SetAdapterState(action AdapterAction) error {
 func SetChargingState(action ChargingAction) error {
 	switch action {
 	case ChargingActionOn:
-		fmt.Println("Forcing charging ON...")
-		if currentSMCConfig.IsLegacyCharging {
-			for _, key := range currentSMCConfig.ChargingKeysLegacy {
-				if err := smc.WriteData(key, currentSMCConfig.ChargingEnableBytes); err != nil {
-					return fmt.Errorf("failed to write to legacy charging key '%s': %w", key, err)
-				}
-			}
-			return nil
-		}
-		return smc.WriteData(currentSMCConfig.ChargingKeyModern, currentSMCConfig.ChargingEnableBytes)
+		return setCharging(true)
 
 	case ChargingActionOff:
-		fmt.Println("Forcing charging OFF...")
-		if currentSMCConfig.IsLegacyCharging {
-			for _, key := range currentSMCConfig.ChargingKeysLegacy {
-				if err := smc.WriteData(key, currentSMCConfig.ChargingDisableBytes); err != nil {
-					return fmt.Errorf("failed to write to legacy charging key '%s': %w", key, err)
-				}
-			}
-			return nil
-		}
-		return smc.WriteData(currentSMCConfig.ChargingKeyModern, currentSMCConfig.ChargingDisableBytes)
+		return setCharging(false)
 
 	case ChargingActionToggle:
 		fmt.Println("Reading current charging state to perform toggle...")

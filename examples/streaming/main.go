@@ -13,6 +13,9 @@ import (
 	"github.com/peterneutron/powerkit-go/pkg/powerkit"
 )
 
+// one block for readability, leading to a slightly higher but acceptable complexity.
+//
+//nolint:gocyclo // The main function in this example is intentionally kept in
 func main() {
 	fmt.Println("Starting IOKit power event monitor...")
 	fmt.Println("This program will report changes to charging status and battery percentage.")

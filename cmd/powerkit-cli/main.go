@@ -13,6 +13,16 @@ import (
 	"github.com/peterneutron/powerkit-go/pkg/powerkit"
 )
 
+const (
+	actionOn    = "on"
+	actionOff   = "off"
+	colorOff    = "off"
+	colorAmber  = "amber"
+	colorGreen  = "green"
+	cmdGetColor = "get-color"
+	cmdSetColor = "set-color"
+)
+
 func main() {
 	// --- Command Dispatching ---
 	// We need at least one argument for a command.
@@ -114,11 +124,11 @@ func handleWriteCommand(group, action string) {
 	switch group {
 	case "adapter":
 		switch action {
-		case "on":
+		case actionOn:
 			fmt.Println("Attempting to enable the charger...")
 			err = powerkit.SetAdapterState(powerkit.AdapterActionOn)
 			successMsg = "Successfully enabled the charger."
-		case "off":
+		case actionOff:
 			fmt.Println("Attempting to disable the charger...")
 			err = powerkit.SetAdapterState(powerkit.AdapterActionOff)
 			successMsg = "Successfully disabled the charger."
@@ -127,11 +137,11 @@ func handleWriteCommand(group, action string) {
 		}
 	case "charging":
 		switch action {
-		case "on":
+		case actionOn:
 			fmt.Println("Attempting to enable charging")
 			err = powerkit.SetChargingState(powerkit.ChargingActionOn)
 			successMsg = "Successfully enabled charging."
-		case "off":
+		case actionOff:
 			fmt.Println("Attempting to disable charging")
 			err = powerkit.SetChargingState(powerkit.ChargingActionOff)
 			successMsg = "Successfully disabled charging."
@@ -164,14 +174,14 @@ func MagsafeColorToString(c powerkit.MagsafeColor) string {
 
 func handleMagsafeCommand(subcommand string, args []string) {
 	switch subcommand {
-	case "get-color":
+	case cmdGetColor:
 		color, err := powerkit.GetMagsafeLEDColor()
 		if err != nil {
 			log.Fatalf("Error getting Magsafe LED color: %v", err)
 		}
 		fmt.Printf("Current Magsafe LED color: %s\n", MagsafeColorToString(color))
 
-	case "set-color":
+	case cmdSetColor:
 		checkRoot()
 		if len(args) < 1 {
 			log.Fatalf("Error: 'set-color' requires a color argument (off, amber, green).")
@@ -181,11 +191,11 @@ func handleMagsafeCommand(subcommand string, args []string) {
 		var validColor = true
 
 		switch colorStr {
-		case "off":
+		case colorOff:
 			color = powerkit.LEDOff
-		case "amber":
+		case colorAmber:
 			color = powerkit.LEDAmber
-		case "green":
+		case colorGreen:
 			color = powerkit.LEDGreen
 		default:
 			validColor = false
@@ -256,7 +266,8 @@ func handleRawCommand(keys []string) {
 
 	// We do this to convert the []byte slice into a hex string before marshaling.
 	formattedOutput := make(map[string]interface{})
-	for key, val := range rawValues {
+	for key := range rawValues { // Iterate over keys only
+		val := rawValues[key] // Get the value once inside the loop
 		formattedOutput[key] = struct {
 			DataType string `json:"DataType"`
 			DataSize int    `json:"DataSize"`
