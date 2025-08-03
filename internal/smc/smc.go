@@ -224,7 +224,7 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
     SMCKeyData_t output;
     size_t structSize = sizeof(SMCKeyData_t);
 
-    // --- STEP 1: Read the key's full metadata first (like SMCReadKey2 does) ---
+    // Read the key's full metadata first
     memset(&input, 0, structSize);
     memset(&output, 0, structSize);
     input.key = str_to_key(key);
@@ -242,7 +242,7 @@ kern_return_t smc_read_key(io_connect_t conn, const char* key, float *value) {
         return kIOReturnBadArgument;
     }
 
-    // --- STEP 2: Now, construct the WRITE payload using the retrieved metadata ---
+    // Now, construct the WRITE payload using the retrieved metadata
     memset(&input, 0, structSize);
     memset(&output, 0, structSize);
 

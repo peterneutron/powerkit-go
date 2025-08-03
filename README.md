@@ -284,11 +284,10 @@ go install github.com/peterneutron/powerkit-go/cmd/powerkit-cli@latest
 powerkit-cli all
 
 # Dump only IOKit or SMC data
-powerkit-cli iokit
-powerkit-cli smc
+powerkit-cli <iokit|smc>
 
 # Perform a raw query for custom SMC keys
-powerkit-cli raw FNum TC0D PPBR
+powerkit-cli raw <KEY1> <KEY2> <...>
 
 # Subscribe to IOKit event stream
 powerkit-cli watch
@@ -317,17 +316,11 @@ powerkit-cli watch
 
 **Write Commands (Requires Root):**
 ```bash
-# Disable the AC adapter
-sudo powerkit-cli adapter off
+# Enable/Disable the AC adapter
+sudo powerkit-cli adapter <on|off>
 
-# Enable the AC adapter
-sudo powerkit-cli adapter on
-
-# Disable battery charging
-sudo powerkit-cli charging off
-
-# Enable battery charging
-sudo powerkit-cli charging on
+# Enable/Disable battery charging
+sudo powerkit-cli charging <on|off>
 ```
 
 ## Contributing
