@@ -28,3 +28,9 @@ jobs:
         run: |
           ls -l powerkit-cli
           file powerkit-cli
+      
+      - name: Upload powerkit-cli binary as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: powerkit-cli-macos
+          path: powerkit-cli
