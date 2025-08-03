@@ -1,0 +1,30 @@
+name: Build CLI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: build-cli-binary
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.5'
+
+      - name: Build powerkit-cli binary
+        run: CGO_ENABLED=1 go build -v -o powerkit-cli ./cmd/powerkit-cli
+        
+      - name: Verify binary was created
+        run: |
+          ls -l powerkit-cli
+          file powerkit-cli
