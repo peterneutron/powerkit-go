@@ -23,6 +23,20 @@ const (
 	cmdSetColor = "set-color"
 )
 
+// EventTypeToString provides a human-readable name for an event type.
+func EventTypeToString(t powerkit.EventType) string {
+	switch t {
+	case powerkit.EventTypeBatteryUpdate:
+		return "Battery Update"
+	case powerkit.EventTypeSystemWillSleep:
+		return "System Will Sleep"
+	case powerkit.EventTypeSystemDidWake:
+		return "System Did Wake"
+	default:
+		return "Unknown Event"
+	}
+}
+
 func main() {
 	// --- Command Dispatching ---
 	// We need at least one argument for a command.
@@ -81,11 +95,11 @@ func printUsage() {
 	fmt.Println("  smc          Dump curated SystemInfo from SMC only")
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
 	fmt.Println("  watch        Stream real-time power events as they happen")
+	fmt.Println("  magsafe get-color               Get the current Magsafe LED color")
 
 	fmt.Println("\nControl Commands:")
 	fmt.Println("  adapter <on|off>                Enable or disable the adapter connection (requires sudo)")
 	fmt.Println("  charging <on|off>               Enable or disable battery charging (requires sudo)")
-	fmt.Println("  magsafe get-color               Get the current Magsafe LED color")
 	fmt.Println("  magsafe set-color <color>       Set the Magsafe LED color (off, amber, green) (requires sudo)")
 
 	fmt.Println("\nOther Commands:")
@@ -94,23 +108,31 @@ func printUsage() {
 
 // --- NEW: Watch Command Handler ---
 func handleWatchCommand() {
-	fmt.Println("Watching for power events... Press Ctrl+C to exit.")
+	fmt.Println("Watching for system events... Press Ctrl+C to exit.")
 
-	infoChan, err := powerkit.StreamSystemInfo()
+	// Subscribe to the new, unified event stream.
+	eventChan, err := powerkit.StreamSystemEvents()
 	if err != nil {
-		log.Fatalf("Error starting watch stream: %v", err)
+		log.Fatalf("Error starting event stream: %v", err)
 	}
 
-	for info := range infoChan {
-		jsonData, err := json.MarshalIndent(info, "", "  ")
-		if err != nil {
-			log.Printf("Error formatting data to JSON: %v", err)
-			continue
-		}
-		// Clear screen sequence for a cleaner live view
+	for event := range eventChan {
+		// Clear screen for a cleaner live view.
 		fmt.Print("\033[H\033[2J")
 		fmt.Printf("--- Event Received at %s ---\n", time.Now().Format(time.RFC3339))
-		fmt.Println(string(jsonData))
+		fmt.Printf("Event Type: %s\n\n", EventTypeToString(event.Type))
+
+		// The Info payload is only present for battery updates.
+		if event.Info != nil {
+			jsonData, err := json.MarshalIndent(event.Info, "", "  ")
+			if err != nil {
+				log.Printf("Error formatting data to JSON: %v", err)
+				continue
+			}
+			fmt.Println(string(jsonData))
+		} else {
+			fmt.Println("This event type does not have an info payload.")
+		}
 	}
 }
 

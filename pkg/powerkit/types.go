@@ -3,6 +3,32 @@
 
 package powerkit
 
+// --- Event Streaming Structs ---
+
+// EventType defines the kind of system event that occurred.
+type EventType int
+
+const (
+	// EventTypeBatteryUpdate signifies a change in battery state (e.g., percentage).
+	// The `Info` field of the SystemEvent will be populated.
+	EventTypeBatteryUpdate EventType = iota
+
+	// EventTypeSystemWillSleep signifies the system is about to enter sleep.
+	// The `Info` field of the SystemEvent will be nil.
+	EventTypeSystemWillSleep
+
+	// EventTypeSystemDidWake signifies the system has just woken from sleep.
+	// The `Info` field of the SystemEvent will be nil.
+	EventTypeSystemDidWake
+)
+
+// SystemEvent is the unified structure delivered by the event stream. It contains
+// the type of event and, if applicable, the associated system information.
+type SystemEvent struct {
+	Type EventType   `json:"Type"`
+	Info *SystemInfo `json:"Info,omitempty"` // Populated only for EventTypeBatteryUpdate
+}
+
 // --- Configuration Structs ---
 
 // FetchOptions allows the user to specify which data sources to query.

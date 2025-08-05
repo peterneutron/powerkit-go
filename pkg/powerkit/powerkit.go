@@ -11,58 +11,76 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
-// StreamSystemInfo starts monitoring IOKit for power-related events and returns
-// a read-only channel that will receive a SystemInfo object whenever a
-// change is detected. The returned object will only contain IOKit data.
-func StreamSystemInfo() (<-chan *SystemInfo, error) {
-	// This channel will be returned to the caller.
-	systemInfoChan := make(chan *SystemInfo)
+// StreamSystemEvents starts monitoring IOKit for all relevant power and
+// battery events. It returns a single, read-only channel that delivers a
+// unified SystemEvent for any change.
+func StreamSystemEvents() (<-chan SystemEvent, error) {
+	// The public-facing channel that the consumer will receive.
+	systemEventChan := make(chan SystemEvent, 2)
 
-	// Start the low-level IOKit monitor. This spawns a goroutine with a C RunLoop.
+	// Start the low-level IOKit monitor. This is idempotent and safe to call.
+	// It spawns one C RunLoop to handle all event sources.
 	iokit.StartMonitor()
 
-	// Launch a processor goroutine. This goroutine bridges the raw notification
-	// signal to a high-level, IOKit-focused SystemInfo object.
+	// Launch the dispatcher goroutine. This is the core of the unified model.
+	// It bridges the internal, low-level events to the public, high-level API.
 	go func() {
-		// Ensure the channel is closed when the loop exits, signaling the end of the stream.
-		defer close(systemInfoChan)
+		// Ensure the public channel is closed when this goroutine exits.
+		defer close(systemEventChan)
 
-		// The first event should be sent immediately to provide the initial state.
-		// A non-blocking send ensures we don't stall if the consumer isn't ready.
+		// On startup, immediately trigger a battery update to provide the
+		// consumer with an initial state, just like a real event.
 		select {
-		case iokit.Updates <- struct{}{}:
+		case iokit.Events <- iokit.InternalEvent{Type: iokit.BatteryUpdate}:
 		default:
 		}
 
-		for range iokit.Updates {
-			// When a signal is received, fetch ONLY the fresh IOKit data.
-			// Do NOT call the generic GetSystemInfo() here.
-			iokitRawData, err := iokit.FetchData()
-			if err != nil {
-				log.Printf("Error fetching IOKit data in stream: %v", err)
-				continue // Skip this update on error
+		// Main event processing loop.
+		for internalEvent := range iokit.Events {
+			var publicEvent SystemEvent
+
+			// Translate the internal event type to the public one.
+			switch internalEvent.Type {
+			case iokit.BatteryUpdate:
+				// For a battery update, we need to fetch the full IOKit data.
+				iokitRawData, err := iokit.FetchData()
+				if err != nil {
+					log.Printf("Error fetching IOKit data in stream: %v", err)
+					continue // Skip this event on error
+				}
+
+				// Construct the SystemInfo object, which will be the payload.
+				info := &SystemInfo{
+					OS:    OSInfo{Firmware: currentSMCConfig.Firmware},
+					IOKit: newIOKitData(iokitRawData),
+					SMC:   nil, // SMC data is not queried in event streams.
+				}
+				calculateDerivedMetrics(info) // Populate calculated fields.
+
+				// Build the final public event.
+				publicEvent = SystemEvent{
+					Type: EventTypeBatteryUpdate,
+					Info: info,
+				}
+
+			case iokit.SystemWillSleep:
+				publicEvent = SystemEvent{Type: EventTypeSystemWillSleep, Info: nil}
+
+			case iokit.SystemDidWake:
+				publicEvent = SystemEvent{Type: EventTypeSystemDidWake, Info: nil}
+
+			default:
+				// Should not happen, but good to have a fallback.
+				log.Printf("Warning: Received unknown internal event type: %d", internalEvent.Type)
+				continue
 			}
 
-			// Construct a new SystemInfo object containing only the data
-			// relevant to this event stream.
-			info := &SystemInfo{
-				OS: OSInfo{
-					Firmware: currentSMCConfig.Firmware,
-				},
-				IOKit: newIOKitData(iokitRawData),
-				SMC:   nil, // Explicitly set SMC to nil for clarity.
-			}
-
-			// Populate derived calculations for the IOKit part.
-			// This function is safe as it checks for nil pointers.
-			calculateDerivedMetrics(info)
-
-			// Send the processed, IOKit-only info object to the consumer.
-			systemInfoChan <- info
+			// Send the fully constructed event to the consumer.
+			systemEventChan <- publicEvent
 		}
 	}()
 
-	return systemInfoChan, nil
+	return systemEventChan, nil
 }
 
 // GetSystemInfo is the primary entrypoint to the library.
