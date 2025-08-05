@@ -25,7 +25,7 @@ func main() {
 	// 1. Initiate the streaming process.
 	// StreamSystemInfo returns a read-only channel that will receive
 	// a *powerkit.SystemInfo object whenever IOKit posts a notification.
-	infoChan, err := powerkit.StreamSystemInfo()
+	eventChan, err := powerkit.StreamSystemEvents()
 	if err != nil {
 		log.Fatalf("Fatal: Could not start powerkit stream: %v", err)
 	}
@@ -46,15 +46,23 @@ func main() {
 	// 4. Run the main event processing loop in a separate goroutine.
 	// This prevents the main thread from blocking.
 	go func() {
-		for info := range infoChan {
-			// The stream provides IOKit data. Always check for nil to be safe.
-			if info == nil || info.IOKit == nil {
+		for event := range eventChan { // Renamed 'info' to 'event' for clarity (see point 2)
+			// First, handle events that have NO payload.
+			// This is the correct nil check.
+			if event.Info == nil {
+				switch event.Type {
+				case powerkit.EventTypeSystemWillSleep:
+					fmt.Printf("[%s] Event received: System WILL SLEEP\n", time.Now().Format(time.RFC3339))
+				case powerkit.EventTypeSystemDidWake:
+					fmt.Printf("[%s] Event received: System DID WAKE\n", time.Now().Format(time.RFC3339))
+				}
+				// We've handled this event, so we can skip to the next iteration.
 				continue
 			}
 
 			// Extract the values we're interested in.
-			currentCharge := info.IOKit.Battery.CurrentCharge
-			isCharging := info.IOKit.State.IsCharging
+			currentCharge := event.Info.IOKit.Battery.CurrentCharge
+			isCharging := event.Info.IOKit.State.IsCharging
 
 			// On the very first event, print the initial state.
 			if firstEvent {
