@@ -53,6 +53,14 @@ type SystemInfo struct {
 // OSInfo holds information about the operating system environment.
 type OSInfo struct {
 	Firmware string `json:"Firmware"` // "Supported", "Legacy" or "Unknown"
+
+	// Global: reflect system-wide assertion state (any process)
+	GlobalSystemSleepAllowed  bool `json:"GlobalSystemSleepAllowed"`
+	GlobalDisplaySleepAllowed bool `json:"GlobalDisplaySleepAllowed"`
+
+	// App: reflect assertions created by this process (library client)
+	AppSystemSleepAllowed  bool `json:"AppSystemSleepAllowed"`
+	AppDisplaySleepAllowed bool `json:"AppDisplaySleepAllowed"`
 }
 
 // --- IOKit-Specific Data Structures ---

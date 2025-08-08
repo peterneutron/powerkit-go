@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/peterneutron/powerkit-go/internal/iokit"
+	"github.com/peterneutron/powerkit-go/internal/powerd"
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
@@ -50,8 +51,27 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 				}
 
 				// Construct the SystemInfo object, which will be the payload.
+				// Determine assertion-based sleep allowances (global + app-local)
+				sysAllowedGlobal, dspAllowedGlobal, gErr := powerd.GlobalSleepStatus()
+				dspActiveApp := powerd.IsActive(powerd.PreventDisplaySleep)
+				sysActiveApp := powerd.IsActive(powerd.PreventSystemSleep)
+				dspAllowedApp := !dspActiveApp
+				sysAllowedApp := !sysActiveApp && !dspActiveApp
+				// If global query failed, mirror app-local into global as a fallback
+				if gErr != nil {
+					dspAllowedGlobal = dspAllowedApp
+					sysAllowedGlobal = sysAllowedApp
+				}
+
 				info := &SystemInfo{
-					OS:    OSInfo{Firmware: currentSMCConfig.Firmware},
+					OS: OSInfo{
+						Firmware: currentSMCConfig.Firmware,
+						// Back-compat: mirror global values
+						GlobalSystemSleepAllowed:  sysAllowedGlobal,
+						GlobalDisplaySleepAllowed: dspAllowedGlobal,
+						AppSystemSleepAllowed:     sysAllowedApp,
+						AppDisplaySleepAllowed:    dspAllowedApp,
+					},
 					IOKit: newIOKitData(iokitRawData),
 					SMC:   nil, // SMC data is not queried in event streams.
 				}
@@ -94,8 +114,27 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 		return nil, fmt.Errorf("FetchOptions must specify at least one data source")
 	}
 
+	// Determine assertion-based sleep allowances (global + app-local)
+	sysAllowedGlobal, dspAllowedGlobal, gErr := powerd.GlobalSleepStatus()
+	dspActiveApp := powerd.IsActive(powerd.PreventDisplaySleep)
+	sysActiveApp := powerd.IsActive(powerd.PreventSystemSleep)
+	dspAllowedApp := !dspActiveApp
+	sysAllowedApp := !sysActiveApp && !dspActiveApp
+	// If global query failed, mirror app-local into global as a fallback
+	if gErr != nil {
+		dspAllowedGlobal = dspAllowedApp
+		sysAllowedGlobal = sysAllowedApp
+	}
+
 	info := &SystemInfo{
-		OS: OSInfo{Firmware: currentSMCConfig.Firmware},
+		OS: OSInfo{
+			Firmware: currentSMCConfig.Firmware,
+			// Back-compat: mirror global values
+			GlobalSystemSleepAllowed:  sysAllowedGlobal,
+			GlobalDisplaySleepAllowed: dspAllowedGlobal,
+			AppSystemSleepAllowed:     sysAllowedApp,
+			AppDisplaySleepAllowed:    dspAllowedApp,
+		},
 	}
 
 	if options.QueryIOKit {

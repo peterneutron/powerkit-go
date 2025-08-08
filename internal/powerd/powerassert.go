@@ -7,7 +7,12 @@ package powerd
 
 /*
 #cgo LDFLAGS: -framework IOKit -framework CoreFoundation
+#include <CoreFoundation/CoreFoundation.h>
+#include <stdlib.h>
 #include <IOKit/pwr_mgt/IOPMLib.h>
+
+// Some symbols are not exposed in public headers on all SDKs; declare them here.
+extern IOReturn IOPMCopyAssertionsStatus(CFDictionaryRef *AssertionsStatus);
 
 // This C function creates a power assertion and returns its ID.
 // It returns 0 on failure.
@@ -46,10 +51,48 @@ CFStringRef get_assertion_type_system_sleep() {
 CFStringRef get_assertion_type_display_sleep() {
     return kIOPMAssertionTypePreventUserIdleDisplaySleep;
 }
+
+// Query global assertion status via IOPMCopyAssertionsStatus.
+// Returns 0 on success and writes counts of active assertions into the provided pointers.
+int get_assertions_status(int* preventSystem, int* preventDisplay) {
+    CFDictionaryRef dict = NULL;
+    IOReturn ret = IOPMCopyAssertionsStatus(&dict);
+
+    // If the call fails, return an error.
+    if (ret != kIOReturnSuccess) {
+        // dict should be NULL on failure, but release if not, just in case.
+        if (dict) CFRelease(dict);
+        return 1;
+    }
+
+    // If the call succeeded but the dictionary is NULL, it means no assertions are active.
+    // This is a success case with zero counts.
+    if (dict == NULL) {
+        if (preventSystem) *preventSystem = 0;
+        if (preventDisplay) *preventDisplay = 0;
+        return 0;
+    }
+
+    int sys = 0, dsp = 0;
+    CFNumberRef sysNum = (CFNumberRef)CFDictionaryGetValue(dict, kIOPMAssertionTypePreventUserIdleSystemSleep);
+    CFNumberRef dspNum = (CFNumberRef)CFDictionaryGetValue(dict, kIOPMAssertionTypePreventUserIdleDisplaySleep);
+    if (sysNum) {
+        CFNumberGetValue(sysNum, kCFNumberIntType, &sys);
+    }
+    if (dspNum) {
+        CFNumberGetValue(dspNum, kCFNumberIntType, &dsp);
+    }
+    if (preventSystem) *preventSystem = sys;
+    if (preventDisplay) *preventDisplay = dsp;
+
+    CFRelease(dict);
+    return 0;
+}
 */
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"unsafe"
@@ -152,4 +195,56 @@ func AllowSleep(assertionType AssertionType) {
 func AllowAllSleep() {
 	AllowSleep(PreventSystemSleep)
 	AllowSleep(PreventDisplaySleep)
+}
+
+// IsActive reports whether an assertion of the given type is currently
+// active (created and not released) by this process.
+func IsActive(assertionType AssertionType) bool {
+	mu.Lock()
+	defer mu.Unlock()
+
+	switch assertionType {
+	case PreventSystemSleep:
+		return systemSleepAssertionID != 0
+	case PreventDisplaySleep:
+		return displaySleepAssertionID != 0
+	default:
+		return false
+	}
+}
+
+// GetAssertionID returns the active assertion ID for the given type, if any.
+// The boolean return indicates whether an assertion is active.
+func GetAssertionID(assertionType AssertionType) (AssertionID, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	switch assertionType {
+	case PreventSystemSleep:
+		if systemSleepAssertionID != 0 {
+			return systemSleepAssertionID, true
+		}
+	case PreventDisplaySleep:
+		if displaySleepAssertionID != 0 {
+			return displaySleepAssertionID, true
+		}
+	}
+	return 0, false
+}
+
+// GlobalSleepStatus queries macOS for global assertion counts using IOPM APIs.
+// Returns true/false for whether system and display sleep are allowed systemwide.
+func GlobalSleepStatus() (systemAllowed bool, displayAllowed bool, err error) {
+	var sys, dsp C.int
+	rc := C.get_assertions_status(&sys, &dsp)
+	if rc != 0 {
+		return true, true, errors.New("IOPMCopyAssertionsStatus failed")
+	}
+	displayAllowed = dsp == 0
+	systemAllowed = sys == 0
+	// Display prevention implies system prevention.
+	if !displayAllowed {
+		systemAllowed = false
+	}
+	return systemAllowed, displayAllowed, nil
 }

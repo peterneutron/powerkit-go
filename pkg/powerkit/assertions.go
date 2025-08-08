@@ -39,3 +39,16 @@ func ReleaseAssertion(assertionType AssertionType) {
 func AllowAllSleep() {
 	powerd.AllowAllSleep()
 }
+
+// IsAssertionActive reports whether an assertion of the given type is active
+// (created and not released) by this process.
+func IsAssertionActive(assertionType AssertionType) bool {
+	return powerd.IsActive(powerd.AssertionType(assertionType))
+}
+
+// GetAssertionID returns the active assertion ID for the given type, if any.
+// The boolean return indicates whether an assertion is active.
+func GetAssertionID(assertionType AssertionType) (AssertionID, bool) {
+	id, ok := powerd.GetAssertionID(powerd.AssertionType(assertionType))
+	return AssertionID(id), ok
+}

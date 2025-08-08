@@ -11,13 +11,14 @@ A comprehensive Go library for monitoring and controlling macOS power features. 
 
 ## Features
 
-*   **Real-time Event Streaming:** Supports real-time event streaming for power-related events from `IOKit`
+*   **Real-time Event Streaming:** Battery updates plus system sleep/wake events from `IOKit`.
 *   **Dual Source Data:** Access both the high-level `IOKit` registry and the low-level `SMC` for a complete power profile.
 *   **Hardware Control:** Enable/disable charging, connect/disconnect the AC adapter, and change the MagSafe LED color (requires root privileges).
 *   **Source-Centric API:** The primary API returns a clean, structured `SystemInfo` object that strictly separates data by its source, eliminating ambiguity.
 *   **Flexible Queries:** Choose to query IOKit, the SMC, or both, for maximum efficiency.
 *   **Raw SMC Access:** A dedicated API for advanced users to query custom SMC keys.
-*   **Command-Line Tool:** Includes `powerkit-cli` to dump hardware info, query SMC keys, and control power states from your terminal.
+*   **OS Sleep Indicators:** JSON includes global and app-local sleep allowance flags.
+*   **Command-Line Tool:** Includes `powerkit-cli` to dump info, stream events, query SMC keys, and control power states.
 
 ## Installation
 
@@ -53,9 +54,16 @@ func main() {
 }
 ```
 
-**Example Output:**
+**Example Output (truncated):**
 ```json
 {
+  "OS": {
+    "Firmware": "...",
+    "GlobalSystemSleepAllowed": true,
+    "GlobalDisplaySleepAllowed": true,
+    "AppSystemSleepAllowed": true,
+    "AppDisplaySleepAllowed": true
+  },
   "IOKit": {
     "State": {
       "IsCharging": false,
@@ -202,16 +210,17 @@ info, err := powerkit.GetSystemInfo(options)
 
 ### 4. Advanced Usage: Real-time Event Streaming
 
-The powerkit library supports real-time event streaming for power-related events from `IOKit`. This is the most efficient way to monitor for changes like plugging in an adapter, battery percentage changes, or when charging starts or stops, as it avoids constant polling.
+The powerkit library supports real-time event streaming for power-related events from `IOKit`. This is the most efficient way to monitor for changes like plugging in an adapter, battery percentage changes, when charging starts/stops, and sleep/wake notifications, as it avoids constant polling.
 
 **Important Considerations:**
 
 *   **Event-Driven:** The stream is driven by IOKit's notification system. It is **not** a high-frequency ticker. Updates are sent only when the system deems a property change significant. This means minor fluctuations in voltage may not trigger an update, but connecting a power adapter will.
+*   **Event Types:** `BatteryUpdate` (Info present), `SystemWillSleep` and `SystemDidWake` (Info is nil).
 *   **IOKit Data Only:** The streaming API exclusively provides data sourced from IOKit. Information from the SMC is not included in the stream and must be fetched separately using the polling function `GetSystemInfo()`.
 
 #### Minimal Usage Example
 
-To use the stream, you must capture the channel returned by `StreamSystemInfo` and then range over it to process events.
+To use the stream, you must capture the channel returned by `StreamSystemEvents` and then range over it to process events.
 
 ```go
 package main
@@ -224,32 +233,57 @@ import (
 )
 
 func main() {
-	// 1. Start the stream and get the channel.
-	// Note that we capture both the channel (`infoChan`) and the error.
-	infoChan, err := powerkit.StreamSystemInfo()
+    // 1. Start the stream and get the channel.
+    // Note that we capture both the channel (`evCh`) and the error.
+    evCh, err := powerkit.StreamSystemEvents()
 	if err != nil {
 		log.Fatalf("Failed to start powerkit stream: %v", err)
 	}
 
-	fmt.Println("Listening for IOKit power events... Press Ctrl+C to exit.")
+    fmt.Println("Listening for power events... Press Ctrl+C to exit.")
 
 	// 2. Loop forever, reading events from the channel.
 	// This is a blocking operation; an event will be processed as it arrives.
-	for info := range infoChan {
-		// 3. The `info` object contains the latest IOKit data.
-		// It's good practice to check for nil.
-		if info != nil && info.IOKit != nil {
-			isCharging := info.IOKit.State.IsCharging
-			chargePct := info.IOKit.Battery.CurrentCharge
-			
-			fmt.Printf("Event received: IsCharging=%v, Battery=%d%%\n", isCharging, chargePct)
-		}
-	}
+    for ev := range evCh {
+        switch ev.Type {
+        case powerkit.EventTypeBatteryUpdate:
+            if ev.Info != nil && ev.Info.IOKit != nil {
+                isCharging := ev.Info.IOKit.State.IsCharging
+                chargePct := ev.Info.IOKit.Battery.CurrentCharge
+                fmt.Printf("Battery: charging=%v, level=%d%%\n", isCharging, chargePct)
+            }
+        case powerkit.EventTypeSystemWillSleep:
+            fmt.Println("System will sleep")
+        case powerkit.EventTypeSystemDidWake:
+            fmt.Println("System did wake")
+        }
+    }
 }
 ```
 *Note: For a real application, you would typically run the `for...range` loop in a separate goroutine to avoid blocking your main thread.*
 
-### 5. Power User: Raw SMC Key Queries
+### 5. Power Assertions (No Root)
+
+Use macOS power assertions to prevent system or display sleep. One assertion per type is managed per process.
+
+```go
+// Prevent display sleep with a reason visible in Activity Monitor
+id, err := powerkit.CreateAssertion(powerkit.AssertionTypePreventDisplaySleep, "Presentation running")
+if err != nil { log.Fatal(err) }
+defer powerkit.AllowAllSleep() // Ensure cleanup on exit
+
+// Query process-local status
+if powerkit.IsAssertionActive(powerkit.AssertionTypePreventDisplaySleep) {
+    fmt.Println("Display sleep prevented by this process")
+}
+_ = id // use for logging/diagnostics if desired
+```
+
+OS-level sleep indicators are available in `GetSystemInfo()` under `OS`:
+- `GlobalSystemSleepAllowed`, `GlobalDisplaySleepAllowed`: systemwide state (any process)
+- `AppSystemSleepAllowed`, `AppDisplaySleepAllowed`: this process only
+
+### 6. Power User: Raw SMC Key Queries
 
 For maximum flexibility, `GetRawSMCValues()` allows you to query any custom SMC key and receive the raw, undecoded data. You are responsible for interpreting the bytes.
 
@@ -292,6 +326,9 @@ powerkit-cli raw <KEY1> <KEY2> <...>
 # Subscribe to IOKit event stream
 powerkit-cli watch
 
+# MagSafe LED
+powerkit-cli magsafe get-color
+
 ```
 **Example Output for `raw`:**
 ```json
@@ -321,6 +358,9 @@ sudo powerkit-cli adapter <on|off>
 
 # Enable/Disable battery charging
 sudo powerkit-cli charging <on|off>
+
+# Set MagSafe LED color
+sudo powerkit-cli magsafe set-color <off|amber|green>
 ```
 
 ## Contributing
