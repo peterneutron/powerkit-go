@@ -31,7 +31,10 @@ var Events = make(chan InternalEvent, 2) // Buffer of 2 is safe
 // RawData holds the unprocessed data returned from the IOKit C functions.
 // This struct is intended for internal use within the library.
 type RawData struct {
-	CurrentCharge   int
+	CurrentCharge      int
+	CurrentChargeRaw   int
+	CurrentCapacityRaw int
+
 	IsCharging      bool
 	IsConnected     bool
 	IsFullyCharged  bool
@@ -39,7 +42,6 @@ type RawData struct {
 	DesignCapacity  int
 	MaxCapacity     int
 	NominalCapacity int
-	CurrentCapacity int
 	TimeToEmpty     int
 	TimeToFull      int
 	Temperature     int

@@ -11,7 +11,6 @@ package iokit
 #include <string.h>
 
 typedef struct {
-    long state_of_charge;
     int is_charging;
     int is_connected;
     int is_fully_charged;
@@ -19,7 +18,13 @@ typedef struct {
     long design_capacity;
     long max_capacity;
     long nominal_capacity;
-    long current_capacity;
+
+    //long state_of_charge;
+
+    long current_capacity_raw;
+    long current_charge_raw;
+    long current_charge;
+
     long time_to_empty;
     long time_to_full;
     long temperature;
@@ -129,7 +134,10 @@ int get_all_battery_info(c_battery_info *info) {
     info->design_capacity = get_long_prop(properties, "DesignCapacity");
     info->max_capacity = get_long_prop(properties, "AppleRawMaxCapacity");
     info->nominal_capacity = get_long_prop(properties, "NominalChargeCapacity");
-    info->current_capacity = get_long_prop(properties, "AppleRawCurrentCapacity");
+
+    info->current_capacity_raw = get_long_prop(properties, "AppleRawCurrentCapacity");
+    info->current_charge = get_long_prop(properties, "CurrentCapacity");
+
     info->time_to_empty = get_long_prop(properties, "AvgTimeToEmpty");
     info->time_to_full = get_long_prop(properties, "AvgTimeToFull");
     info->temperature = get_long_prop(properties, "Temperature");
@@ -155,9 +163,9 @@ int get_all_battery_info(c_battery_info *info) {
     }
     CFDictionaryRef battery_data_dict = get_dict_prop(properties, "BatteryData");
     if (battery_data_dict != NULL) {
-        info->state_of_charge = get_long_prop(battery_data_dict, "StateOfCharge");
+        info->current_charge_raw = get_long_prop(battery_data_dict, "StateOfCharge");
     } else {
-        info->state_of_charge = 0;
+        info->current_charge_raw = 0;
     }
     CFRelease(properties);
     return 0;
@@ -177,28 +185,30 @@ func FetchData() (*RawData, error) {
 	}
 
 	data := &RawData{
-		CurrentCharge:   int(cInfo.state_of_charge),
-		IsCharging:      cInfo.is_charging != 0,
-		IsConnected:     cInfo.is_connected != 0,
-		IsFullyCharged:  cInfo.is_fully_charged != 0,
-		CycleCount:      int(cInfo.cycle_count),
-		DesignCapacity:  int(cInfo.design_capacity),
-		MaxCapacity:     int(cInfo.max_capacity),
-		NominalCapacity: int(cInfo.nominal_capacity),
-		CurrentCapacity: int(cInfo.current_capacity),
-		TimeToEmpty:     int(cInfo.time_to_empty),
-		TimeToFull:      int(cInfo.time_to_full),
-		Temperature:     int(cInfo.temperature),
-		Voltage:         int(cInfo.voltage),
-		Amperage:        int(cInfo.amperage),
-		SerialNumber:    C.GoString(&cInfo.serial_number[0]),
-		DeviceName:      C.GoString(&cInfo.device_name[0]),
-		AdapterWatts:    int(cInfo.adapter_watts),
-		AdapterVoltage:  int(cInfo.adapter_voltage),
-		AdapterAmperage: int(cInfo.adapter_amperage),
-		AdapterDesc:     C.GoString(&cInfo.adapter_description[0]),
-		SourceVoltage:   int(cInfo.source_voltage),
-		SourceAmperage:  int(cInfo.source_amperage),
+
+		CurrentCharge:      int(cInfo.current_charge),       //%
+		CurrentChargeRaw:   int(cInfo.current_charge_raw),   //%
+		CurrentCapacityRaw: int(cInfo.current_capacity_raw), //mAh
+		IsCharging:         cInfo.is_charging != 0,
+		IsConnected:        cInfo.is_connected != 0,
+		IsFullyCharged:     cInfo.is_fully_charged != 0,
+		CycleCount:         int(cInfo.cycle_count),
+		DesignCapacity:     int(cInfo.design_capacity),
+		MaxCapacity:        int(cInfo.max_capacity),
+		NominalCapacity:    int(cInfo.nominal_capacity),
+		TimeToEmpty:        int(cInfo.time_to_empty),
+		TimeToFull:         int(cInfo.time_to_full),
+		Temperature:        int(cInfo.temperature),
+		Voltage:            int(cInfo.voltage),
+		Amperage:           int(cInfo.amperage),
+		SerialNumber:       C.GoString(&cInfo.serial_number[0]),
+		DeviceName:         C.GoString(&cInfo.device_name[0]),
+		AdapterWatts:       int(cInfo.adapter_watts),
+		AdapterVoltage:     int(cInfo.adapter_voltage),
+		AdapterAmperage:    int(cInfo.adapter_amperage),
+		AdapterDesc:        C.GoString(&cInfo.adapter_description[0]),
+		SourceVoltage:      int(cInfo.source_voltage),
+		SourceAmperage:     int(cInfo.source_amperage),
 	}
 
 	if cInfo.cell_voltage_count > 0 {
