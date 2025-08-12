@@ -186,9 +186,9 @@ func FetchData() (*RawData, error) {
 
 	data := &RawData{
 
-		CurrentCharge:      int(cInfo.current_charge),       //%
-		CurrentChargeRaw:   int(cInfo.current_charge_raw),   //%
-		CurrentCapacityRaw: int(cInfo.current_capacity_raw), //mAh
+		CurrentCharge:      int(cInfo.current_charge),       // %
+		CurrentChargeRaw:   int(cInfo.current_charge_raw),   // %
+		CurrentCapacityRaw: int(cInfo.current_capacity_raw), // mAh
 		IsCharging:         cInfo.is_charging != 0,
 		IsConnected:        cInfo.is_connected != 0,
 		IsFullyCharged:     cInfo.is_fully_charged != 0,
