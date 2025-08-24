@@ -37,16 +37,26 @@ const (
 	ChargingActionOff // 2
 )
 
-// MagsafeColor defines the possible states for the charging LED.
-type MagsafeColor int
+// MagsafeLEDState is the full state enum for the MagSafe LED.
+type MagsafeLEDState uint8
 
 const (
-	// LEDOff represents the 'Off' state for the Magsafe LED.
-	LEDOff MagsafeColor = iota // 0
-	// LEDAmber represents the 'Amber' (charging) state for the Magsafe LED.
-	LEDAmber // 1
-	// LEDGreen represents the 'Green' (fully charged) state for the Magsafe LED.
-	LEDGreen // 2
+	// LEDSystem lets the system control the LED automatically.
+	LEDSystem MagsafeLEDState = 0x00
+	// LEDOff turns the LED off.
+	LEDOff MagsafeLEDState = 0x01
+	// LEDGreen shows green (often fully charged).
+	LEDGreen MagsafeLEDState = 0x03
+	// LEDAmber shows amber/orange (charging).
+	LEDAmber MagsafeLEDState = 0x04
+	// LEDErrorOnce flashes an error once.
+	LEDErrorOnce MagsafeLEDState = 0x05
+	// LEDErrorPermSlow indicates a persistent slow error blink.
+	LEDErrorPermSlow MagsafeLEDState = 0x06
+	// LEDErrorPermFast indicates a persistent fast error blink.
+	LEDErrorPermFast MagsafeLEDState = 0x07
+	// LEDErrorPermOff indicates a persistent error-off state.
+	LEDErrorPermOff MagsafeLEDState = 0x19
 )
 
 // SetAdapterState sets the desired adapter state (On, Off, or Toggle).
@@ -132,67 +142,57 @@ func SetChargingState(action ChargingAction) error {
 	}
 }
 
-// SetMagsafeLEDColor sets the color of the Magsafe charging LED.
-func SetMagsafeLEDColor(color MagsafeColor) error {
-	// The ACLC key expects two bytes:
-	// Byte 0: LED ID (0 for Magsafe)
-	// Byte 1: Color code (0=Off, 1=Amber, 2=Green)
-	var colorCode byte
-	switch color {
-	case LEDAmber:
-		colorCode = 0x01
-	case LEDGreen:
-		colorCode = 0x02
-	case LEDOff:
-		colorCode = 0x00
-	default:
-		return fmt.Errorf("invalid MagsafeColor provided: %d", color)
-	}
-
-	// Prepare the 2-byte slice to write to the SMC.
-	data := []byte{0x00, colorCode}
-
-	// Call the internal, generic write function.
-	return smc.WriteData(smc.KeyMagsafeLED, data)
+// SetMagsafeLEDState writes the single-byte LED state to the SMC.
+// This uses the common 1-byte ACLC format.
+func SetMagsafeLEDState(state MagsafeLEDState) error {
+	return smc.WriteData(smc.KeyMagsafeLED, []byte{byte(state)})
 }
 
-// GetMagsafeLEDColor reads the current color of the Magsafe charging LED.
-func GetMagsafeLEDColor() (MagsafeColor, error) {
+// GetMagsafeLEDState reads the single-byte LED state. It returns:
+// - state: the raw state value (mapped to constants when known)
+// - available: false when the key exists but contains no data (or cannot be read)
+// - err: transport or read error; unknown state is not an error
+func GetMagsafeLEDState() (state MagsafeLEDState, available bool, err error) {
 	rawValues, err := GetRawSMCValues([]string{smc.KeyMagsafeLED})
 	if err != nil {
-		return LEDOff, fmt.Errorf("could not read Magsafe LED state from SMC: %w", err)
+		return LEDAmber, false, fmt.Errorf("could not read Magsafe LED state from SMC: %w", err)
 	}
 
 	ledValue, ok := rawValues[smc.KeyMagsafeLED]
 	if !ok {
-		return LEDOff, fmt.Errorf("could not find Magsafe LED key '%s' on this system", smc.KeyMagsafeLED)
+		// Key not present – treat as unavailable
+		return LEDAmber, false, nil
+	}
+	if ledValue.DataSize == 0 || len(ledValue.Data) == 0 {
+		// Explicitly signal not available when key contains no data
+		return LEDAmber, false, nil
 	}
 
-	// The ACLC key's data is 2 bytes. Byte 0 is the LED ID, Byte 1 is the color code.
-	if ledValue.DataSize < 2 {
-		return LEDOff, fmt.Errorf("unexpected data size for Magsafe LED key: got %d bytes, want at least 2", ledValue.DataSize)
-	}
+	// Interpret the first byte as the state. If the device uses a 2-byte
+	// format, byte 0 is typically 0x00 which maps to LEDSystem.
+	b := ledValue.Data[0]
 
-	colorCode := ledValue.Data[1]
-	switch colorCode {
-	case 0x00:
-		return LEDOff, nil
-	case 0x01:
-		return LEDAmber, nil
-	case 0x02:
-		return LEDGreen, nil
-	default:
-		// Other states exist but are not mapped to our public enum.
-		// Returning an error for unhandled states is the safest approach.
-		return LEDOff, fmt.Errorf("unknown Magsafe LED color code received: 0x%02x", colorCode)
+	// Map 0x02 to green (seen on some machines)
+	if b == 0x02 {
+		return LEDGreen, true, nil
 	}
+	return MagsafeLEDState(b), true, nil
 }
 
 // IsMagsafeCharging checks if the Magsafe LED indicates a charging state (Amber).
 func IsMagsafeCharging() (bool, error) {
-	color, err := GetMagsafeLEDColor()
+	state, available, err := GetMagsafeLEDState()
 	if err != nil {
 		return false, fmt.Errorf("could not determine Magsafe charging state: %w", err)
 	}
-	return color == LEDAmber, nil
+	if !available {
+		return false, fmt.Errorf("magsafe LED not available")
+	}
+	return state == LEDAmber, nil
+}
+
+// IsMagsafeAvailable returns true if the ACLC key is present and has data.
+func IsMagsafeAvailable() bool {
+	_, ok, _ := GetMagsafeLEDState()
+	return ok
 }

@@ -171,23 +171,29 @@ if err != nil {
 
 #### Controlling the MagSafe LED
 
-You can change the color of the MagSafe charging LED.
+You can change the MagSafe charging LED state.
 
 ```go
 // Set LED to Amber
-err := powerkit.SetMagsafeLEDColor(powerkit.LEDAmber)
+err := powerkit.SetMagsafeLEDState(powerkit.LEDAmber)
 if err != nil {
     log.Fatal(err)
 }
 
 // Set LED to Green
-err = powerkit.SetMagsafeLEDColor(powerkit.LEDGreen)
+err = powerkit.SetMagsafeLEDState(powerkit.LEDGreen)
 if err != nil {
     log.Fatal(err)
 }
 
 // Turn LED Off
-err = powerkit.SetMagsafeLEDColor(powerkit.LEDOff)
+err = powerkit.SetMagsafeLEDState(powerkit.LEDOff)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Let the system control the LED
+err = powerkit.SetMagsafeLEDState(powerkit.LEDSystem)
 if err != nil {
     log.Fatal(err)
 }
@@ -359,8 +365,8 @@ sudo powerkit-cli adapter <on|off>
 # Enable/Disable battery charging
 sudo powerkit-cli charging <on|off>
 
-# Set MagSafe LED color
-sudo powerkit-cli magsafe set-color <off|amber|green>
+# Set MagSafe LED state
+sudo powerkit-cli magsafe set-color <system|off|amber|green|error-once|error-perm-slow|error-perm-fast|error-perm-off>
 ```
 
 ## Contributing

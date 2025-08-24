@@ -14,13 +14,18 @@ import (
 )
 
 const (
-	actionOn    = "on"
-	actionOff   = "off"
-	colorOff    = "off"
-	colorAmber  = "amber"
-	colorGreen  = "green"
-	cmdGetColor = "get-color"
-	cmdSetColor = "set-color"
+	actionOn         = "on"
+	actionOff        = "off"
+	colorOff         = "off"
+	colorAmber       = "amber"
+	colorGreen       = "green"
+	colorSystem      = "system"
+	colorErrOnce     = "error-once"
+	colorErrPermSlow = "error-perm-slow"
+	colorErrPermFast = "error-perm-fast"
+	colorErrPermOff  = "error-perm-off"
+	cmdGetColor      = "get-color"
+	cmdSetColor      = "set-color"
 )
 
 // EventTypeToString provides a human-readable name for an event type.
@@ -95,12 +100,12 @@ func printUsage() {
 	fmt.Println("  smc          Dump curated SystemInfo from SMC only")
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
 	fmt.Println("  watch        Stream real-time power events as they happen")
-	fmt.Println("  magsafe get-color               Get the current Magsafe LED color")
+	fmt.Println("  magsafe get-color               Get the current Magsafe LED state")
 
 	fmt.Println("\nControl Commands:")
 	fmt.Println("  adapter <on|off>                Enable or disable the adapter connection (requires sudo)")
 	fmt.Println("  charging <on|off>               Enable or disable battery charging (requires sudo)")
-	fmt.Println("  magsafe set-color <color>       Set the Magsafe LED color (off, amber, green) (requires sudo)")
+	fmt.Println("  magsafe set-color <state>       Set the Magsafe LED state (system, off, amber, green, error-once, error-perm-slow, error-perm-fast, error-perm-off) (requires sudo)")
 
 	fmt.Println("\nOther Commands:")
 	fmt.Println("  help         Show this help message")
@@ -180,59 +185,89 @@ func handleWriteCommand(group, action string) {
 
 // --- Magsafe Command Handler ---
 
-// MagsafeColorToString converts the enum to a human-readable string for printing.
-func MagsafeColorToString(c powerkit.MagsafeColor) string {
-	switch c {
+// MagsafeStateToString converts the enum to a human-readable string for printing.
+func MagsafeStateToString(s powerkit.MagsafeLEDState) string {
+	switch s {
+	case powerkit.LEDSystem:
+		return "System"
 	case powerkit.LEDOff:
 		return "Off"
 	case powerkit.LEDAmber:
 		return "Amber"
 	case powerkit.LEDGreen:
 		return "Green"
+	case powerkit.LEDErrorOnce:
+		return "Error (Once)"
+	case powerkit.LEDErrorPermSlow:
+		return "Error (Perm Slow)"
+	case powerkit.LEDErrorPermFast:
+		return "Error (Perm Fast)"
+	case powerkit.LEDErrorPermOff:
+		return "Error (Perm Off)"
 	default:
-		return "Unknown"
+		return fmt.Sprintf("Unknown (0x%02x)", byte(s))
 	}
+}
+
+// --- Magsafe helpers to keep cyclomatic complexity low ---
+func parseMagsafeStateArg(val string) (powerkit.MagsafeLEDState, bool) {
+	switch val {
+	case colorSystem:
+		return powerkit.LEDSystem, true
+	case colorOff:
+		return powerkit.LEDOff, true
+	case colorAmber:
+		return powerkit.LEDAmber, true
+	case colorGreen:
+		return powerkit.LEDGreen, true
+	case colorErrOnce:
+		return powerkit.LEDErrorOnce, true
+	case colorErrPermSlow:
+		return powerkit.LEDErrorPermSlow, true
+	case colorErrPermFast:
+		return powerkit.LEDErrorPermFast, true
+	case colorErrPermOff:
+		return powerkit.LEDErrorPermOff, true
+	default:
+		return 0, false
+	}
+}
+
+func doMagsafeGet() {
+	state, available, err := powerkit.GetMagsafeLEDState()
+	if err != nil {
+		log.Fatalf("Error getting Magsafe LED state: %v", err)
+	}
+	if !available {
+		fmt.Println("MagSafe LED: Not available")
+		return
+	}
+	fmt.Printf("Current Magsafe LED state: %s\n", MagsafeStateToString(state))
+}
+
+func doMagsafeSet(args []string) {
+	checkRoot()
+	if len(args) < 1 {
+		log.Fatalf("Error: 'set-color' requires a state argument (system, off, amber, green, error-once, error-perm-slow, error-perm-fast, error-perm-off).")
+	}
+	state, ok := parseMagsafeStateArg(args[0])
+	if !ok {
+		log.Fatalf("Error: invalid state '%s'. Use one of: system, off, amber, green, error-once, error-perm-slow, error-perm-fast, error-perm-off.", args[0])
+	}
+	fmt.Printf("Attempting to set Magsafe LED to %s...\n", MagsafeStateToString(state))
+	if err := powerkit.SetMagsafeLEDState(state); err != nil {
+		log.Fatalf("Command failed: %v", err)
+	}
+	fmt.Printf("Successfully set Magsafe LED state to %s.\n", MagsafeStateToString(state))
 }
 
 func handleMagsafeCommand(subcommand string, args []string) {
 	switch subcommand {
 	case cmdGetColor:
-		color, err := powerkit.GetMagsafeLEDColor()
-		if err != nil {
-			log.Fatalf("Error getting Magsafe LED color: %v", err)
-		}
-		fmt.Printf("Current Magsafe LED color: %s\n", MagsafeColorToString(color))
+		doMagsafeGet()
 
 	case cmdSetColor:
-		checkRoot()
-		if len(args) < 1 {
-			log.Fatalf("Error: 'set-color' requires a color argument (off, amber, green).")
-		}
-		colorStr := args[0]
-		var color powerkit.MagsafeColor
-		var validColor = true
-
-		switch colorStr {
-		case colorOff:
-			color = powerkit.LEDOff
-		case colorAmber:
-			color = powerkit.LEDAmber
-		case colorGreen:
-			color = powerkit.LEDGreen
-		default:
-			validColor = false
-		}
-
-		if !validColor {
-			log.Fatalf("Error: invalid color '%s'. Use 'off', 'amber', or 'green'.", colorStr)
-		}
-
-		fmt.Printf("Attempting to set Magsafe LED to %s...\n", colorStr)
-		err := powerkit.SetMagsafeLEDColor(color)
-		if err != nil {
-			log.Fatalf("Command failed: %v", err)
-		}
-		fmt.Println("Successfully set Magsafe LED color.")
+		doMagsafeSet(args)
 
 	default:
 		fmt.Printf("Error: unknown subcommand '%s' for 'magsafe'.\n\n", subcommand)
