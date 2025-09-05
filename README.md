@@ -18,6 +18,7 @@ A comprehensive Go library for monitoring and controlling macOS power features. 
 *   **Flexible Queries:** Choose to query IOKit, the SMC, or both, for maximum efficiency.
 *   **Raw SMC Access:** A dedicated API for advanced users to query custom SMC keys.
 *   **OS Sleep Indicators:** JSON includes global and app-local sleep allowance flags.
+*   **Low Power Mode:** Read availability/state via API and control it from the CLI.
 *   **Command-Line Tool:** Includes `powerkit-cli` to dump info, stream events, query SMC keys, and control power states.
 
 ## Installation
@@ -288,6 +289,7 @@ _ = id // use for logging/diagnostics if desired
 OS-level sleep indicators are available in `GetSystemInfo()` under `OS`:
 - `GlobalSystemSleepAllowed`, `GlobalDisplaySleepAllowed`: systemwide state (any process)
 - `AppSystemSleepAllowed`, `AppDisplaySleepAllowed`: this process only
+- `LowPowerMode.Enabled`, `LowPowerMode.Available`: macOS Low Power Mode state
 
 ### 6. Power User: Raw SMC Key Queries
 
@@ -335,6 +337,9 @@ powerkit-cli watch
 # MagSafe LED
 powerkit-cli magsafe get-color
 
+# Low Power Mode
+powerkit-cli lowpower get
+
 ```
 **Assertions (No Root):**
 ```bash
@@ -375,6 +380,10 @@ sudo powerkit-cli charging <on|off>
 
 # Set MagSafe LED state
 sudo powerkit-cli magsafe set-color <system|off|amber|green|error-once|error-perm-slow|error-perm-fast|error-perm-off>
+
+# Low Power Mode
+sudo powerkit-cli lowpower set <on|off>
+sudo powerkit-cli lowpower toggle
 ```
 
 ## Contributing

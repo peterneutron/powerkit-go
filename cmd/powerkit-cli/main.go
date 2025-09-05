@@ -34,6 +34,11 @@ const (
 	colorErrPermOff      = "error-perm-off"
 	cmdGetColor          = "get-color"
 	cmdSetColor          = "set-color"
+	// low power mode
+	cmdLowPower = "lowpower"
+	lpmGet      = "get"
+	lpmSet      = "set"
+	lpmToggle   = "toggle"
 )
 
 // EventTypeToString provides a human-readable name for an event type.
@@ -85,6 +90,9 @@ func main() {
 		// Delegate arg validation to handler
 		handleAssertionCommand(os.Args[2:])
 
+	case cmdLowPower:
+		handleLowPowerCommand(os.Args[2:])
+
 	// Help and default
 	case "help":
 		printUsage()
@@ -107,6 +115,9 @@ func printUsage() {
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
 	fmt.Println("  watch        Stream real-time power events as they happen")
 	fmt.Println("  magsafe get-color               Get the current Magsafe LED state")
+	fmt.Println("  lowpower get                    Get macOS Low Power Mode state")
+	fmt.Println("  lowpower set <on|off>           Set Low Power Mode (requires sudo)")
+	fmt.Println("  lowpower toggle                 Toggle Low Power Mode (requires sudo)")
 	fmt.Println("  assertion status <system|display>   Show whether the assertion is active and its ID")
 
 	fmt.Println("\nControl Commands:")
@@ -287,6 +298,68 @@ func handleMagsafeCommand(subcommand string, args []string) {
 		printUsage()
 		os.Exit(1)
 	}
+}
+
+// --- Low Power Mode Command Handler ---
+func handleLowPowerCommand(args []string) {
+	if len(args) < 1 {
+		log.Fatalf("Error: 'lowpower' requires a subcommand ('get', 'set', 'toggle').")
+	}
+	switch args[0] {
+	case lpmGet:
+		doLowPowerGet()
+	case lpmSet:
+		if len(args) < 2 {
+			log.Fatalf("Error: 'lowpower set' requires 'on' or 'off'.")
+		}
+		doLowPowerSet(args[1])
+	case lpmToggle:
+		doLowPowerToggle()
+	default:
+		log.Fatalf("Error: unknown subcommand '%s' for 'lowpower'.", args[0])
+	}
+}
+
+func doLowPowerGet() {
+	enabled, available, err := powerkit.GetLowPowerModeEnabled()
+	if err != nil {
+		log.Fatalf("Error reading Low Power Mode: %v", err)
+	}
+	if !available {
+		fmt.Println("Low Power Mode: Not available")
+		return
+	}
+	if enabled {
+		fmt.Println("Low Power Mode: Enabled")
+	} else {
+		fmt.Println("Low Power Mode: Disabled")
+	}
+}
+
+func doLowPowerSet(val string) {
+	checkRoot()
+	switch val {
+	case actionOn:
+		if err := powerkit.SetLowPowerMode(true); err != nil {
+			log.Fatalf("Error enabling Low Power Mode: %v", err)
+		}
+		fmt.Println("Low Power Mode enabled.")
+	case actionOff:
+		if err := powerkit.SetLowPowerMode(false); err != nil {
+			log.Fatalf("Error disabling Low Power Mode: %v", err)
+		}
+		fmt.Println("Low Power Mode disabled.")
+	default:
+		log.Fatalf("Error: invalid argument '%s'. Use 'on' or 'off'.", val)
+	}
+}
+
+func doLowPowerToggle() {
+	checkRoot()
+	if err := powerkit.ToggleLowPowerMode(); err != nil {
+		log.Fatalf("Error toggling Low Power Mode: %v", err)
+	}
+	fmt.Println("Low Power Mode toggled.")
 }
 
 // --- Assertion Command Handler ---

@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/peterneutron/powerkit-go/internal/iokit"
+	sysos "github.com/peterneutron/powerkit-go/internal/os"
 	"github.com/peterneutron/powerkit-go/internal/powerd"
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
@@ -63,6 +64,9 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 					sysAllowedGlobal = sysAllowedApp
 				}
 
+				// Read Low Power Mode state (cached, low overhead)
+				lpmEnabled, lpmAvailable, _ := sysos.GetLowPowerModeEnabled()
+
 				info := &SystemInfo{
 					OS: OSInfo{
 						Firmware: currentSMCConfig.Firmware,
@@ -71,6 +75,7 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 						GlobalDisplaySleepAllowed: dspAllowedGlobal,
 						AppSystemSleepAllowed:     sysAllowedApp,
 						AppDisplaySleepAllowed:    dspAllowedApp,
+						LowPowerMode:              LowPowerModeInfo{Enabled: lpmEnabled, Available: lpmAvailable},
 					},
 					IOKit: newIOKitData(iokitRawData),
 					SMC:   nil, // SMC data is not queried in event streams.
@@ -126,6 +131,9 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 		sysAllowedGlobal = sysAllowedApp
 	}
 
+	// Read Low Power Mode state (cached)
+	lpmEnabled, lpmAvailable, _ := sysos.GetLowPowerModeEnabled()
+
 	info := &SystemInfo{
 		OS: OSInfo{
 			Firmware: currentSMCConfig.Firmware,
@@ -134,6 +142,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 			GlobalDisplaySleepAllowed: dspAllowedGlobal,
 			AppSystemSleepAllowed:     sysAllowedApp,
 			AppDisplaySleepAllowed:    dspAllowedApp,
+			LowPowerMode:              LowPowerModeInfo{Enabled: lpmEnabled, Available: lpmAvailable},
 		},
 	}
 

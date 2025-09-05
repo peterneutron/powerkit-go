@@ -61,6 +61,15 @@ type OSInfo struct {
 	// App: reflect assertions created by this process (library client)
 	AppSystemSleepAllowed  bool `json:"AppSystemSleepAllowed"`
 	AppDisplaySleepAllowed bool `json:"AppDisplaySleepAllowed"`
+
+	// LowPowerMode reports macOS Low Power Mode state and availability
+	LowPowerMode LowPowerModeInfo `json:"LowPowerMode"`
+}
+
+// LowPowerModeInfo contains the LPM state and availability flag
+type LowPowerModeInfo struct {
+	Enabled   bool `json:"Enabled"`
+	Available bool `json:"Available"`
 }
 
 // --- IOKit-Specific Data Structures ---
