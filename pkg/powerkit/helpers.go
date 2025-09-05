@@ -69,8 +69,26 @@ func getIOKitInfo(info *SystemInfo) {
 
 // Create a helper for fetching SMC data
 func getSMCInfo(info *SystemInfo) {
-	smcFloatResults, err1 := smc.FetchData(smc.KeysToRead)
-	smcRawResults, err2 := smc.FetchRawData(smc.KeysToRead) // Use correct keys
+	// Build SMC key lists: separate numeric sensor keys (for float decode)
+	// from control/state keys that are not decodable to float.
+	floatKeys := []string{
+		smc.KeyAdapterVoltage,
+		smc.KeyAdapterCurrent,
+		smc.KeyBatteryVoltage,
+		smc.KeyBatteryCurrent,
+	}
+	rawKeys := append([]string{}, floatKeys...)
+	// Adapter enable state key depends on firmware
+	rawKeys = append(rawKeys, currentSMCConfig.AdapterKey)
+	// Charging enable state keys depend on legacy vs modern
+	if currentSMCConfig.IsLegacyCharging {
+		rawKeys = append(rawKeys, currentSMCConfig.ChargingKeysLegacy...)
+	} else {
+		rawKeys = append(rawKeys, currentSMCConfig.ChargingKeyModern)
+	}
+
+	smcFloatResults, err1 := smc.FetchData(floatKeys)
+	smcRawResults, err2 := smc.FetchRawData(rawKeys)
 	if err1 != nil || err2 != nil {
 		log.Printf("Warning: SMC data fetch failed, continuing without it. FltErr: %v, RawErr: %v", err1, err2)
 		return
