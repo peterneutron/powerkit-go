@@ -64,36 +64,30 @@ const (
 func SetAdapterState(action AdapterAction) error {
 	key := currentSMCConfig.AdapterKey
 
+	// Internal helper without side effects.
+	setAdapter := func(enable bool) error {
+		if enable {
+			return smc.WriteData(key, currentSMCConfig.AdapterEnableBytes)
+		}
+		return smc.WriteData(key, currentSMCConfig.AdapterDisableBytes)
+	}
+
 	switch action {
 	case AdapterActionOn:
-		fmt.Println("Forcing adapter ON...")
-		return smc.WriteData(key, currentSMCConfig.AdapterEnableBytes)
-
+		return setAdapter(true)
 	case AdapterActionOff:
-		fmt.Println("Forcing adapter OFF...")
-		return smc.WriteData(key, currentSMCConfig.AdapterDisableBytes)
-
+		return setAdapter(false)
 	case AdapterActionToggle:
-		fmt.Println("Reading current adapter state to perform toggle...")
 		rawValues, err := GetRawSMCValues([]string{key})
 		if err != nil {
 			return fmt.Errorf("could not read current adapter state: %w", err)
 		}
-
 		adapterValue, ok := rawValues[key]
 		if !ok {
 			return fmt.Errorf("could not find key '%s' on this system", key)
 		}
-
 		isAdapterDisabled := bytes.Equal(adapterValue.Data, currentSMCConfig.AdapterDisableBytes)
-
-		if isAdapterDisabled {
-			fmt.Println("Adapter is currently OFF. Toggling ON...")
-			return SetAdapterState(AdapterActionOn)
-		}
-		fmt.Println("Adapter is currently ON. Toggling OFF...")
-		return SetAdapterState(AdapterActionOff)
-
+		return setAdapter(isAdapterDisabled) // enable when disabled, disable when enabled
 	default:
 		return fmt.Errorf("invalid AdapterAction provided")
 	}
@@ -110,7 +104,6 @@ func SetChargingState(action ChargingAction) error {
 		return setCharging(false)
 
 	case ChargingActionToggle:
-		fmt.Println("Reading current charging state to perform toggle...")
 		// For toggle, we only need to read one key to determine the state.
 		keyToRead := currentSMCConfig.ChargingKeyModern
 		if currentSMCConfig.IsLegacyCharging {
@@ -128,14 +121,7 @@ func SetChargingState(action ChargingAction) error {
 		}
 
 		isChargingDisabled := bytes.Equal(chargerValue.Data, currentSMCConfig.ChargingDisableBytes)
-
-		if isChargingDisabled {
-			fmt.Println("Charging is currently OFF. Toggling ON...")
-			return SetChargingState(ChargingActionOn)
-		}
-
-		fmt.Println("Charging is currently ON. Toggling OFF...")
-		return SetChargingState(ChargingActionOff)
+		return setCharging(isChargingDisabled) // enable when disabled, disable when enabled
 
 	default:
 		return fmt.Errorf("invalid ChargingAction provided")

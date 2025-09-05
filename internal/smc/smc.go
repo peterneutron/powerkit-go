@@ -185,6 +185,7 @@ import "C"
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"unsafe"
 )
@@ -244,6 +245,9 @@ func FetchData(keys []string) (map[string]float64, error) {
 		decodedValue, err := decodeSMCValue(rawValue.DataType, rawValue.Data)
 		if err == nil {
 			decodedResults[key] = decodedValue
+		} else {
+			// Provide visibility when a key cannot be decoded.
+			log.Printf("powerkit/smc: failed to decode key %s (type %s): %v", key, rawValue.DataType, err)
 		}
 		// Note: Keys with unsupported data types are silently ignored.
 	}

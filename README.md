@@ -336,6 +336,14 @@ powerkit-cli watch
 powerkit-cli magsafe get-color
 
 ```
+**Assertions (No Root):**
+```bash
+# Create or release process-local sleep assertions
+powerkit-cli assertion create <system|display> [reason...]
+powerkit-cli assertion release <system|display>
+# Check status for this process
+powerkit-cli assertion status <system|display>
+```
 **Example Output for `raw`:**
 ```json
 {

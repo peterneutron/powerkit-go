@@ -41,10 +41,8 @@ func findMinMax(a []int) (minVal int, maxVal int) {
 func setCharging(enable bool) error {
 	var bytesToWrite []byte
 	if enable {
-		fmt.Println("Forcing charging ON...")
 		bytesToWrite = currentSMCConfig.ChargingEnableBytes
 	} else {
-		fmt.Println("Forcing charging OFF...")
 		bytesToWrite = currentSMCConfig.ChargingDisableBytes
 	}
 

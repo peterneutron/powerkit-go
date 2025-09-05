@@ -31,8 +31,6 @@ var KeysToRead = []string{
 	KeyBatteryVoltage,
 	KeyBatteryCurrent,
 	KeyIsAdapterEnabled,
-	KeyIsChargingEnabled,
-	KeyIsAdapterEnabled,
 	KeyIsAdapterEnabledLegacy,
 	KeyIsChargingEnabled,
 	KeyIsChargingEnabledLegacyBCLM,

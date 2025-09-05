@@ -8,24 +8,32 @@ import (
 	"log"
 	"os"
 	"os/user"
+	"strings"
 	"time"
 
 	"github.com/peterneutron/powerkit-go/pkg/powerkit"
 )
 
 const (
-	actionOn         = "on"
-	actionOff        = "off"
-	colorOff         = "off"
-	colorAmber       = "amber"
-	colorGreen       = "green"
-	colorSystem      = "system"
-	colorErrOnce     = "error-once"
-	colorErrPermSlow = "error-perm-slow"
-	colorErrPermFast = "error-perm-fast"
-	colorErrPermOff  = "error-perm-off"
-	cmdGetColor      = "get-color"
-	cmdSetColor      = "set-color"
+	actionOn  = "on"
+	actionOff = "off"
+	// assertion
+	assertionCmd         = "assertion"
+	assertionCreate      = "create"
+	assertionRelease     = "release"
+	assertionStatus      = "status"
+	assertionTypeSystem  = "system"
+	assertionTypeDisplay = "display"
+	colorOff             = "off"
+	colorAmber           = "amber"
+	colorGreen           = "green"
+	colorSystem          = "system"
+	colorErrOnce         = "error-once"
+	colorErrPermSlow     = "error-perm-slow"
+	colorErrPermFast     = "error-perm-fast"
+	colorErrPermOff      = "error-perm-off"
+	cmdGetColor          = "get-color"
+	cmdSetColor          = "set-color"
 )
 
 // EventTypeToString provides a human-readable name for an event type.
@@ -62,22 +70,20 @@ func main() {
 	case "watch": // New command
 		handleWatchCommand()
 
-	// Write commands (two words)
+		// Write commands (two words)
 	case "adapter", "charging":
-		// These commands require a second argument ('on' or 'off')
-		if len(os.Args) < 3 {
-			log.Fatalf("Error: '%s' command requires an action ('on' or 'off').\nUsage: powerkit-cli %s on", commandGroup, commandGroup)
-		}
-		action := os.Args[2]
-		handleWriteCommand(commandGroup, action)
+		// Delegate arg validation to handler
+		handleWriteCommand(commandGroup, os.Args[2:])
 
 	case "magsafe":
-		if len(os.Args) < 3 {
-			log.Fatalf("Error: 'magsafe' command requires a subcommand ('get-color' or 'set-color').")
-		}
+		// Delegate arg validation to handler
 		subcommand := os.Args[2]
 		args := os.Args[3:]
 		handleMagsafeCommand(subcommand, args)
+
+	case assertionCmd:
+		// Delegate arg validation to handler
+		handleAssertionCommand(os.Args[2:])
 
 	// Help and default
 	case "help":
@@ -101,11 +107,14 @@ func printUsage() {
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
 	fmt.Println("  watch        Stream real-time power events as they happen")
 	fmt.Println("  magsafe get-color               Get the current Magsafe LED state")
+	fmt.Println("  assertion status <system|display>   Show whether the assertion is active and its ID")
 
 	fmt.Println("\nControl Commands:")
 	fmt.Println("  adapter <on|off>                Enable or disable the adapter connection (requires sudo)")
 	fmt.Println("  charging <on|off>               Enable or disable battery charging (requires sudo)")
 	fmt.Println("  magsafe set-color <state>       Set the Magsafe LED state (system, off, amber, green, error-once, error-perm-slow, error-perm-fast, error-perm-off) (requires sudo)")
+	fmt.Println("  assertion create <system|display> [reason...]   Create a sleep assertion with optional reason")
+	fmt.Println("  assertion release <system|display>              Release a sleep assertion of the given type")
 
 	fmt.Println("\nOther Commands:")
 	fmt.Println("  help         Show this help message")
@@ -142,11 +151,15 @@ func handleWatchCommand() {
 }
 
 // --- Universal Write Command Handler ---
-func handleWriteCommand(group, action string) {
+func handleWriteCommand(group string, args []string) {
 	checkRoot() // All write commands require the root check.
 
 	var err error
 	var successMsg string
+	if len(args) < 1 {
+		log.Fatalf("Error: '%s' command requires an action ('on' or 'off').\nUsage: powerkit-cli %s on", group, group)
+	}
+	action := args[0]
 
 	switch group {
 	case "adapter":
@@ -271,6 +284,86 @@ func handleMagsafeCommand(subcommand string, args []string) {
 
 	default:
 		fmt.Printf("Error: unknown subcommand '%s' for 'magsafe'.\n\n", subcommand)
+		printUsage()
+		os.Exit(1)
+	}
+}
+
+// --- Assertion Command Handler ---
+func parseAssertionType(val string) (powerkit.AssertionType, bool) {
+	switch val {
+	case assertionTypeSystem:
+		return powerkit.AssertionTypePreventSystemSleep, true
+	case assertionTypeDisplay:
+		return powerkit.AssertionTypePreventDisplaySleep, true
+	default:
+		return 0, false
+	}
+}
+
+func doAssertionCreate(args []string) {
+	if len(args) < 1 {
+		log.Fatalf("Error: 'assertion create' requires a type ('system' or 'display').")
+	}
+	at, ok := parseAssertionType(args[0])
+	if !ok {
+		log.Fatalf("Error: invalid assertion type '%s'. Use 'system' or 'display'.", args[0])
+	}
+	reason := "powerkit-cli"
+	if len(args) > 1 {
+		reason = strings.Join(args[1:], " ")
+	}
+	id, err := powerkit.CreateAssertion(at, reason)
+	if err != nil {
+		log.Fatalf("Error creating assertion: %v", err)
+	}
+	fmt.Printf("Created %s sleep assertion with ID %d.\n", args[0], id)
+}
+
+func doAssertionRelease(args []string) {
+	if len(args) < 1 {
+		log.Fatalf("Error: 'assertion release' requires a type ('system' or 'display').")
+	}
+	at, ok := parseAssertionType(args[0])
+	if !ok {
+		log.Fatalf("Error: invalid assertion type '%s'. Use 'system' or 'display'.", args[0])
+	}
+	powerkit.ReleaseAssertion(at)
+	fmt.Printf("Released %s sleep assertion.\n", args[0])
+}
+
+func doAssertionStatus(args []string) {
+	if len(args) < 1 {
+		log.Fatalf("Error: 'assertion status' requires a type ('system' or 'display').")
+	}
+	at, ok := parseAssertionType(args[0])
+	if !ok {
+		log.Fatalf("Error: invalid assertion type '%s'. Use 'system' or 'display'.", args[0])
+	}
+	active := powerkit.IsAssertionActive(at)
+	if active {
+		id, _ := powerkit.GetAssertionID(at)
+		fmt.Printf("%s assertion is ACTIVE (ID %d).\n", args[0], id)
+	} else {
+		fmt.Printf("%s assertion is not active.\n", args[0])
+	}
+}
+
+func handleAssertionCommand(args []string) {
+	sub := args[0]
+	rest := []string{}
+	if len(args) > 1 {
+		rest = args[1:]
+	}
+	switch sub {
+	case assertionCreate:
+		doAssertionCreate(rest)
+	case assertionRelease:
+		doAssertionRelease(rest)
+	case assertionStatus:
+		doAssertionStatus(rest)
+	default:
+		fmt.Printf("Error: unknown subcommand '%s' for 'assertion'.\n\n", sub)
 		printUsage()
 		os.Exit(1)
 	}
