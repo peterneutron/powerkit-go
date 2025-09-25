@@ -58,8 +58,8 @@ func setCharging(enable bool) error {
 }
 
 // Create a helper for fetching IOKit data
-func getIOKitInfo(info *SystemInfo) {
-	iokitRawData, err := iokit.FetchData()
+func getIOKitInfo(info *SystemInfo, options FetchOptions) {
+	iokitRawData, err := iokit.FetchData(options.ForceTelemetryFallback)
 	if err != nil {
 		log.Printf("Warning: IOKit data fetch failed, continuing without it: %v", err)
 		return

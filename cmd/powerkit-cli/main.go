@@ -69,7 +69,7 @@ func main() {
 	switch commandGroup {
 	// Read commands (single word)
 	case "all", "smc", "iokit":
-		handleDumpCommand(commandGroup)
+		handleDumpCommand(commandGroup, os.Args[2:])
 	case "raw":
 		handleRawCommand(os.Args[2:])
 	case "watch": // New command
@@ -109,7 +109,7 @@ func printUsage() {
 	fmt.Println("\nUsage:")
 	fmt.Println("  powerkit-cli <command> [subcommand/arguments]")
 	fmt.Println("\nRead Commands:")
-	fmt.Println("  all          Dump curated SystemInfo from both IOKit and SMC")
+	fmt.Println("  all [fallback] Dump curated SystemInfo; append 'fallback' to force SMC adapter telemetry")
 	fmt.Println("  iokit        Dump curated SystemInfo from IOKit only")
 	fmt.Println("  smc          Dump curated SystemInfo from SMC only")
 	fmt.Println("  raw [keys...] Query for custom SMC keys (e.g., 'powerkit-cli raw FNum')")
@@ -455,15 +455,11 @@ func checkRoot() {
 
 // Read command handlers
 // handleDumpCommand runs the logic for the "dump" commands.
-func handleDumpCommand(source string) {
-	var options powerkit.FetchOptions
-	switch source {
-	case "all":
-		options.QueryIOKit, options.QuerySMC = true, true
-	case "smc":
-		options.QueryIOKit, options.QuerySMC = false, true
-	case "iokit":
-		options.QueryIOKit, options.QuerySMC = true, false
+
+func handleDumpCommand(source string, args []string) {
+	options, err := resolveDumpOptions(source, args)
+	if err != nil {
+		log.Fatalf("%v", err)
 	}
 
 	info, err := powerkit.GetSystemInfo(options)
@@ -476,6 +472,42 @@ func handleDumpCommand(source string) {
 		log.Fatalf("Error formatting data to JSON: %v", err)
 	}
 	fmt.Println(string(jsonData))
+}
+
+func resolveDumpOptions(source string, args []string) (powerkit.FetchOptions, error) {
+	switch source {
+	case "all":
+		return optionsForAll(args)
+	case "smc":
+		if len(args) > 0 {
+			return powerkit.FetchOptions{}, fmt.Errorf("Error: command 'smc' does not accept additional arguments")
+		}
+		return powerkit.FetchOptions{QuerySMC: true}, nil
+	case "iokit":
+		if len(args) > 0 {
+			return powerkit.FetchOptions{}, fmt.Errorf("Error: command 'iokit' does not accept additional arguments")
+		}
+		return powerkit.FetchOptions{QueryIOKit: true}, nil
+	default:
+		return powerkit.FetchOptions{}, fmt.Errorf("Error: unknown dump source '%s'", source)
+	}
+}
+
+func optionsForAll(args []string) (powerkit.FetchOptions, error) {
+	options := powerkit.FetchOptions{QueryIOKit: true, QuerySMC: true}
+	if len(args) == 0 {
+		return options, nil
+	}
+	if len(args) > 1 {
+		return powerkit.FetchOptions{}, fmt.Errorf("Error: too many arguments for 'all' (expected optional 'fallback')")
+	}
+	switch strings.ToLower(args[0]) {
+	case "fallback", "--fallback":
+		options.ForceTelemetryFallback = true
+		return options, nil
+	default:
+		return powerkit.FetchOptions{}, fmt.Errorf("Error: unknown argument '%s' for 'all'. Did you mean 'fallback'?", args[0])
+	}
 }
 
 func handleRawCommand(keys []string) {

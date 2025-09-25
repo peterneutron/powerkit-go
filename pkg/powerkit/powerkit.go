@@ -45,7 +45,7 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 			switch internalEvent.Type {
 			case iokit.BatteryUpdate:
 				// For a battery update, we need to fetch the full IOKit data.
-				iokitRawData, err := iokit.FetchData()
+				iokitRawData, err := iokit.FetchData(false)
 				if err != nil {
 					log.Printf("Error fetching IOKit data in stream: %v", err)
 					continue // Skip this event on error
@@ -147,7 +147,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	}
 
 	if options.QueryIOKit {
-		getIOKitInfo(info)
+		getIOKitInfo(info, options)
 	}
 	if options.QuerySMC {
 		getSMCInfo(info)

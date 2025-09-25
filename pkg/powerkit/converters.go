@@ -88,12 +88,13 @@ func newIOKitData(raw *iokit.RawData) *IOKitData {
 			IndividualCellVoltages: raw.CellVoltages,
 		},
 		Adapter: IOKitAdapter{
-			Description:   raw.AdapterDesc,
-			MaxWatts:      raw.AdapterWatts,
-			MaxVoltage:    truncate(float64(raw.AdapterVoltage) / 1000.0),
-			MaxAmperage:   truncate(float64(raw.AdapterAmperage) / 1000.0),
-			InputVoltage:  truncate(float64(raw.SourceVoltage) / 1000.0),
-			InputAmperage: truncate(float64(raw.SourceAmperage) / 1000.0),
+			Description:        raw.AdapterDesc,
+			MaxWatts:           raw.AdapterWatts,
+			MaxVoltage:         truncate(float64(raw.AdapterVoltage) / 1000.0),
+			MaxAmperage:        truncate(float64(raw.AdapterAmperage) / 1000.0),
+			InputVoltage:       truncate(float64(raw.SourceVoltage) / 1000.0),
+			InputAmperage:      truncate(float64(raw.SourceAmperage) / 1000.0),
+			TelemetryAvailable: raw.TelemetryAvailable,
 		},
 	}
 }

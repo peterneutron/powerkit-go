@@ -34,8 +34,9 @@ type SystemEvent struct {
 // FetchOptions allows the user to specify which data sources to query.
 // By default, both sources are enabled.
 type FetchOptions struct {
-	QueryIOKit bool
-	QuerySMC   bool
+	QueryIOKit             bool
+	QuerySMC               bool
+	ForceTelemetryFallback bool
 }
 
 // --- Top-Level Container Struct ---
@@ -110,12 +111,13 @@ type IOKitBattery struct {
 
 // IOKitAdapter contains all data points related to the adapter, as reported by IOKit.
 type IOKitAdapter struct {
-	Description   string  `json:"Description"`
-	MaxWatts      int     `json:"MaxWatts"`
-	MaxVoltage    float64 `json:"MaxVoltage"`
-	MaxAmperage   float64 `json:"MaxAmperage"`
-	InputVoltage  float64 `json:"InputVoltage"`
-	InputAmperage float64 `json:"InputAmperage"`
+	Description        string  `json:"Description"`
+	MaxWatts           int     `json:"MaxWatts"`
+	MaxVoltage         float64 `json:"MaxVoltage"`
+	MaxAmperage        float64 `json:"MaxAmperage"`
+	InputVoltage       float64 `json:"InputVoltage"`
+	InputAmperage      float64 `json:"InputAmperage"`
+	TelemetryAvailable bool    `json:"TelemetryAvailable"`
 }
 
 // IOKitCalculations holds all health and power metrics derived from IOKit data.

@@ -40,6 +40,7 @@ typedef struct {
     long source_amperage;
     long cell_voltages[16];
     int  cell_voltage_count;
+    int  has_power_telemetry;
 } c_battery_info;
 
 static long get_long_prop(CFDictionaryRef dict, const char *key) {
@@ -156,6 +157,7 @@ int get_all_battery_info(c_battery_info *info) {
     if (power_telemetry) {
         info->source_voltage = get_long_prop(power_telemetry, "SystemVoltageIn");
         info->source_amperage = get_long_prop(power_telemetry, "SystemCurrentIn");
+        info->has_power_telemetry = 1;
     }
     CFDictionaryRef battery_data = get_dict_prop(properties, "BatteryData");
     if (battery_data) {
@@ -173,16 +175,25 @@ int get_all_battery_info(c_battery_info *info) {
 */
 import "C"
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+
+	"github.com/peterneutron/powerkit-go/internal/smc"
+)
 
 // FetchData retrieves the raw battery and power data from IOKit.
-func FetchData() (*RawData, error) {
+// When forceFallback is true, SMC data will be used for adapter telemetry even if
+// PowerTelemetryData is present.
+func FetchData(forceFallback bool) (*RawData, error) {
 	var cInfo C.c_battery_info
 
 	ret := C.get_all_battery_info(&cInfo)
 	if ret != 0 {
 		return nil, fmt.Errorf("iokit query failed with C error code: %d", ret)
 	}
+
+	telemetryAvailable := cInfo.has_power_telemetry != 0 && !forceFallback
 
 	data := &RawData{
 
@@ -209,6 +220,19 @@ func FetchData() (*RawData, error) {
 		AdapterDesc:        C.GoString(&cInfo.adapter_description[0]),
 		SourceVoltage:      int(cInfo.source_voltage),
 		SourceAmperage:     int(cInfo.source_amperage),
+		TelemetryAvailable: telemetryAvailable,
+	}
+
+	if !telemetryAvailable {
+		fallback, err := smc.FetchData([]string{smc.KeyAdapterVoltage, smc.KeyAdapterCurrent})
+		if err == nil {
+			if v, ok := fallback[smc.KeyAdapterVoltage]; ok {
+				data.SourceVoltage = int(math.Round(v * 1000.0))
+			}
+			if a, ok := fallback[smc.KeyAdapterCurrent]; ok {
+				data.SourceAmperage = int(math.Round(a * 1000.0))
+			}
+		}
 	}
 
 	if cInfo.cell_voltage_count > 0 {

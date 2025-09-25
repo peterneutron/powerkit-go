@@ -35,27 +35,28 @@ type RawData struct {
 	CurrentChargeRaw   int
 	CurrentCapacityRaw int
 
-	IsCharging      bool
-	IsConnected     bool
-	IsFullyCharged  bool
-	CycleCount      int
-	DesignCapacity  int
-	MaxCapacity     int
-	NominalCapacity int
-	TimeToEmpty     int
-	TimeToFull      int
-	Temperature     int
-	Voltage         int
-	Amperage        int
-	SerialNumber    string
-	DeviceName      string
-	AdapterWatts    int
-	AdapterVoltage  int
-	AdapterAmperage int
-	AdapterDesc     string
-	SourceVoltage   int
-	SourceAmperage  int
-	CellVoltages    []int
+	IsCharging         bool
+	IsConnected        bool
+	IsFullyCharged     bool
+	CycleCount         int
+	DesignCapacity     int
+	MaxCapacity        int
+	NominalCapacity    int
+	TimeToEmpty        int
+	TimeToFull         int
+	Temperature        int
+	Voltage            int
+	Amperage           int
+	SerialNumber       string
+	DeviceName         string
+	AdapterWatts       int
+	AdapterVoltage     int
+	AdapterAmperage    int
+	AdapterDesc        string
+	SourceVoltage      int
+	SourceAmperage     int
+	CellVoltages       []int
+	TelemetryAvailable bool
 }
 
 // --- Streaming Globals ---
