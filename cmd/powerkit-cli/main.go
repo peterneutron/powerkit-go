@@ -480,16 +480,16 @@ func resolveDumpOptions(source string, args []string) (powerkit.FetchOptions, er
 		return optionsForAll(args)
 	case "smc":
 		if len(args) > 0 {
-			return powerkit.FetchOptions{}, fmt.Errorf("Error: command 'smc' does not accept additional arguments")
+			return powerkit.FetchOptions{}, fmt.Errorf("command 'smc' does not accept additional arguments")
 		}
 		return powerkit.FetchOptions{QuerySMC: true}, nil
 	case "iokit":
 		if len(args) > 0 {
-			return powerkit.FetchOptions{}, fmt.Errorf("Error: command 'iokit' does not accept additional arguments")
+			return powerkit.FetchOptions{}, fmt.Errorf("command 'iokit' does not accept additional arguments")
 		}
 		return powerkit.FetchOptions{QueryIOKit: true}, nil
 	default:
-		return powerkit.FetchOptions{}, fmt.Errorf("Error: unknown dump source '%s'", source)
+		return powerkit.FetchOptions{}, fmt.Errorf("unknown dump source '%s'", source)
 	}
 }
 
@@ -499,14 +499,14 @@ func optionsForAll(args []string) (powerkit.FetchOptions, error) {
 		return options, nil
 	}
 	if len(args) > 1 {
-		return powerkit.FetchOptions{}, fmt.Errorf("Error: too many arguments for 'all' (expected optional 'fallback')")
+		return powerkit.FetchOptions{}, fmt.Errorf("too many arguments for 'all' (expected optional 'fallback')")
 	}
 	switch strings.ToLower(args[0]) {
 	case "fallback", "--fallback":
 		options.ForceTelemetryFallback = true
 		return options, nil
 	default:
-		return powerkit.FetchOptions{}, fmt.Errorf("Error: unknown argument '%s' for 'all'. Did you mean 'fallback'?", args[0])
+		return powerkit.FetchOptions{}, fmt.Errorf("unknown argument '%s' for 'all'. did you mean 'fallback'?", args[0])
 	}
 }
 

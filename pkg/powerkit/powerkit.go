@@ -13,6 +13,12 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
+var (
+	globalSleepStatusFn = powerd.GlobalSleepStatus
+	powerdIsActiveFn    = powerd.IsActive
+	getLowPowerModeFn   = sysos.GetLowPowerModeEnabled
+)
+
 // StreamSystemEvents starts monitoring IOKit for all relevant power and
 // battery events. It returns a single, read-only channel that delivers a
 // unified SystemEvent for any change.
@@ -53,9 +59,9 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 
 				// Construct the SystemInfo object, which will be the payload.
 				// Determine assertion-based sleep allowances (global + app-local)
-				sysAllowedGlobal, dspAllowedGlobal, gErr := powerd.GlobalSleepStatus()
-				dspActiveApp := powerd.IsActive(powerd.PreventDisplaySleep)
-				sysActiveApp := powerd.IsActive(powerd.PreventSystemSleep)
+				sysAllowedGlobal, dspAllowedGlobal, gErr := globalSleepStatusFn()
+				dspActiveApp := powerdIsActiveFn(powerd.PreventDisplaySleep)
+				sysActiveApp := powerdIsActiveFn(powerd.PreventSystemSleep)
 				dspAllowedApp := !dspActiveApp
 				sysAllowedApp := !sysActiveApp && !dspActiveApp
 				// If global query failed, mirror app-local into global as a fallback
@@ -65,7 +71,7 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 				}
 
 				// Read Low Power Mode state (cached, low overhead)
-				lpmEnabled, lpmAvailable, _ := sysos.GetLowPowerModeEnabled()
+				lpmEnabled, lpmAvailable, _ := getLowPowerModeFn()
 
 				info := &SystemInfo{
 					OS: OSInfo{
@@ -120,9 +126,9 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	}
 
 	// Determine assertion-based sleep allowances (global + app-local)
-	sysAllowedGlobal, dspAllowedGlobal, gErr := powerd.GlobalSleepStatus()
-	dspActiveApp := powerd.IsActive(powerd.PreventDisplaySleep)
-	sysActiveApp := powerd.IsActive(powerd.PreventSystemSleep)
+	sysAllowedGlobal, dspAllowedGlobal, gErr := globalSleepStatusFn()
+	dspActiveApp := powerdIsActiveFn(powerd.PreventDisplaySleep)
+	sysActiveApp := powerdIsActiveFn(powerd.PreventSystemSleep)
 	dspAllowedApp := !dspActiveApp
 	sysAllowedApp := !sysActiveApp && !dspActiveApp
 	// If global query failed, mirror app-local into global as a fallback
@@ -132,7 +138,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	}
 
 	// Read Low Power Mode state (cached)
-	lpmEnabled, lpmAvailable, _ := sysos.GetLowPowerModeEnabled()
+	lpmEnabled, lpmAvailable, _ := getLowPowerModeFn()
 
 	info := &SystemInfo{
 		OS: OSInfo{

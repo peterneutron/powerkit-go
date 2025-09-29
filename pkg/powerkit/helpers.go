@@ -12,6 +12,12 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
+var (
+	fetchIOKitData    = iokit.FetchData
+	fetchSMCFloatData = smc.FetchData
+	fetchSMCRawData   = smc.FetchRawData
+)
+
 // truncate rounds a float down to two decimal places. This is used
 // consistently across the library for formatting final values.
 func truncate(f float64) float64 {
@@ -59,7 +65,7 @@ func setCharging(enable bool) error {
 
 // Create a helper for fetching IOKit data
 func getIOKitInfo(info *SystemInfo, options FetchOptions) {
-	iokitRawData, err := iokit.FetchData(options.ForceTelemetryFallback)
+	iokitRawData, err := fetchIOKitData(options.ForceTelemetryFallback)
 	if err != nil {
 		log.Printf("Warning: IOKit data fetch failed, continuing without it: %v", err)
 		return
@@ -87,8 +93,8 @@ func getSMCInfo(info *SystemInfo) {
 		rawKeys = append(rawKeys, currentSMCConfig.ChargingKeyModern)
 	}
 
-	smcFloatResults, err1 := smc.FetchData(floatKeys)
-	smcRawResults, err2 := smc.FetchRawData(rawKeys)
+	smcFloatResults, err1 := fetchSMCFloatData(floatKeys)
+	smcRawResults, err2 := fetchSMCRawData(rawKeys)
 	if err1 != nil || err2 != nil {
 		log.Printf("Warning: SMC data fetch failed, continuing without it. FltErr: %v, RawErr: %v", err1, err2)
 		return

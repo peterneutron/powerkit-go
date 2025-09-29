@@ -53,7 +53,10 @@ func calculateHealthMetrics(b *IOKitBattery, c *IOKitCalculations) {
 func calculateIOKitPower(d *IOKitData) {
 	AdapterPower := d.Adapter.InputVoltage * d.Adapter.InputAmperage
 	batteryPower := d.Battery.Voltage * d.Battery.Amperage
-	systemPower := math.Abs(AdapterPower - batteryPower)
+	systemPower := AdapterPower - batteryPower
+	if systemPower < 0 {
+		systemPower = 0
+	}
 
 	d.Calculations.AdapterPower = truncate(AdapterPower)
 	d.Calculations.BatteryPower = truncate(batteryPower)
@@ -64,7 +67,10 @@ func calculateIOKitPower(d *IOKitData) {
 func calculateSMCMetrics(d *SMCData) {
 	AdapterPower := d.Adapter.InputVoltage * d.Adapter.InputAmperage
 	batteryPower := d.Battery.Voltage * d.Battery.Amperage
-	systemPower := math.Abs(AdapterPower - batteryPower)
+	systemPower := AdapterPower - batteryPower
+	if systemPower < 0 {
+		systemPower = 0
+	}
 
 	d.Calculations = SMCCalculations{
 		AdapterPower: truncate(AdapterPower),

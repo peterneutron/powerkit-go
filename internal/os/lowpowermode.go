@@ -5,12 +5,22 @@
 package os
 
 import (
-	"bytes"
 	"errors"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
+)
+
+var (
+	pmsetRunFn = func(args ...string) ([]byte, error) {
+		cmd := exec.Command("/usr/bin/pmset", args...)
+		return cmd.Output()
+	}
+	pmsetExecFn = func(args ...string) error {
+		cmd := exec.Command("/usr/bin/pmset", args...)
+		return cmd.Run()
+	}
 )
 
 // cached state for low power mode reads to avoid frequent process spawns
@@ -34,18 +44,16 @@ func GetLowPowerModeEnabled() (enabled bool, available bool, err error) {
 	}
 	lpmMu.Unlock()
 
-	cmd := exec.Command("/usr/bin/pmset", "-g")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if runErr := cmd.Run(); runErr != nil {
+	out, runErr := pmsetRunFn("-g")
+	if runErr != nil {
 		// Do not update cache on failure to allow quick retry next tick
 		return false, false, runErr
 	}
 
 	enabled = false
 	available = false
-	for _, line := range strings.Split(out.String(), "\n") {
-		s := strings.TrimSpace(strings.ToLower(line))
+	for _, line := range strings.Split(strings.ToLower(string(out)), "\n") {
+		s := strings.TrimSpace(line)
 		if strings.HasPrefix(s, "lowpowermode") {
 			available = true
 			// Example formats:
@@ -83,8 +91,7 @@ func SetLowPowerMode(enable bool) error {
 	//   source := "-a" // or "-b" / "-c" in the future when API supports per-source control
 	//   cmd := exec.Command("/usr/bin/pmset", source, "lowpowermode", target)
 	// For now, keep -a to avoid dead code and ensure consistent behavior.
-	cmd := exec.Command("/usr/bin/pmset", "-a", "lowpowermode", target)
-	if err := cmd.Run(); err != nil {
+	if err := pmsetExecFn("-a", "lowpowermode", target); err != nil {
 		return err
 	}
 

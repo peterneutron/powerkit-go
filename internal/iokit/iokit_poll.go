@@ -182,13 +182,20 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
+var (
+	getAllBatteryInfoFn = func(info *C.c_battery_info) C.int {
+		return C.get_all_battery_info(info)
+	}
+	smcFetchDataFn = smc.FetchData
+)
+
 // FetchData retrieves the raw battery and power data from IOKit.
 // When forceFallback is true, SMC data will be used for adapter telemetry even if
 // PowerTelemetryData is present.
 func FetchData(forceFallback bool) (*RawData, error) {
 	var cInfo C.c_battery_info
 
-	ret := C.get_all_battery_info(&cInfo)
+	ret := getAllBatteryInfoFn(&cInfo)
 	if ret != 0 {
 		return nil, fmt.Errorf("iokit query failed with C error code: %d", ret)
 	}
@@ -223,17 +230,7 @@ func FetchData(forceFallback bool) (*RawData, error) {
 		TelemetryAvailable: telemetryAvailable,
 	}
 
-	if !telemetryAvailable {
-		fallback, err := smc.FetchData([]string{smc.KeyAdapterVoltage, smc.KeyAdapterCurrent})
-		if err == nil {
-			if v, ok := fallback[smc.KeyAdapterVoltage]; ok {
-				data.SourceVoltage = int(math.Round(v * 1000.0))
-			}
-			if a, ok := fallback[smc.KeyAdapterCurrent]; ok {
-				data.SourceAmperage = int(math.Round(a * 1000.0))
-			}
-		}
-	}
+	applyAdapterTelemetryFallback(data, telemetryAvailable)
 
 	if cInfo.cell_voltage_count > 0 {
 		data.CellVoltages = make([]int, cInfo.cell_voltage_count)
@@ -243,4 +240,20 @@ func FetchData(forceFallback bool) (*RawData, error) {
 		}
 	}
 	return data, nil
+}
+
+func applyAdapterTelemetryFallback(data *RawData, telemetryAvailable bool) {
+	if telemetryAvailable {
+		return
+	}
+	fallback, err := smcFetchDataFn([]string{smc.KeyAdapterVoltage, smc.KeyAdapterCurrent})
+	if err != nil {
+		return
+	}
+	if v, ok := fallback[smc.KeyAdapterVoltage]; ok {
+		data.SourceVoltage = int(math.Round(v * 1000.0))
+	}
+	if a, ok := fallback[smc.KeyAdapterCurrent]; ok {
+		data.SourceAmperage = int(math.Round(a * 1000.0))
+	}
 }
