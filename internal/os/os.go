@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 // Package os provides an internal wrapper for OS-specific queries, like getting
 // the macOS version number.

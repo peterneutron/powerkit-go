@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 package powerkit
 
@@ -16,10 +15,16 @@ func GetLowPowerModeEnabled() (bool, bool, error) {
 // SetLowPowerMode enables or disables macOS Low Power Mode.
 // Requires root privileges; callers should handle privilege escalation at the CLI layer.
 func SetLowPowerMode(enable bool) error {
+	if err := requireRoot("set low power mode"); err != nil {
+		return err
+	}
 	return sysos.SetLowPowerMode(enable)
 }
 
 // ToggleLowPowerMode toggles the current Low Power Mode setting.
 func ToggleLowPowerMode() error {
+	if err := requireRoot("toggle low power mode"); err != nil {
+		return err
+	}
 	return sysos.ToggleLowPowerMode()
 }

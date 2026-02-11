@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 // Package iokit provides internal access to IOKit for both polling
 // and streaming power source data.
