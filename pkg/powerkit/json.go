@@ -18,11 +18,15 @@ type SystemInfoJSON struct {
 }
 
 type OSJSON struct {
-	Firmware        string              `json:"firmware"`
-	FirmwareVersion string              `json:"firmware_version"`
-	FirmwareSource  string              `json:"firmware_source"`
-	LowPowerMode    LowPowerModeJSON    `json:"low_power_mode"`
-	SleepAssertions SleepAssertionsJSON `json:"sleep_assertions"`
+	Firmware               string              `json:"firmware"`
+	FirmwareVersion        string              `json:"firmware_version"`
+	FirmwareSource         string              `json:"firmware_source"`
+	FirmwareMajor          int                 `json:"firmware_major"`
+	FirmwareCompatStatus   string              `json:"firmware_compat_status"`
+	FirmwareProfileID      string              `json:"firmware_profile_id"`
+	FirmwareProfileVersion int                 `json:"firmware_profile_version"`
+	LowPowerMode           LowPowerModeJSON    `json:"low_power_mode"`
+	SleepAssertions        SleepAssertionsJSON `json:"sleep_assertions"`
 }
 
 type LowPowerModeJSON struct {
@@ -161,9 +165,13 @@ func (s *SystemInfo) ToJSON() SystemInfoJSON {
 		SchemaVersion: jsonSchemaVersion,
 		CollectedAt:   collectedAt.UTC().Format(time.RFC3339),
 		OS: OSJSON{
-			Firmware:        s.OS.Firmware,
-			FirmwareVersion: s.OS.FirmwareVersion,
-			FirmwareSource:  s.OS.FirmwareSource,
+			Firmware:               s.OS.Firmware,
+			FirmwareVersion:        s.OS.FirmwareVersion,
+			FirmwareSource:         s.OS.FirmwareSource,
+			FirmwareMajor:          s.OS.FirmwareMajor,
+			FirmwareCompatStatus:   s.OS.FirmwareCompatStatus,
+			FirmwareProfileID:      s.OS.FirmwareProfileID,
+			FirmwareProfileVersion: s.OS.FirmwareProfileVersion,
 			LowPowerMode: LowPowerModeJSON{
 				Enabled:   s.OS.LowPowerMode.Enabled,
 				Available: s.OS.LowPowerMode.Available,

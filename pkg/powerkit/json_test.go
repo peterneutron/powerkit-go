@@ -26,26 +26,9 @@ func TestToJSONUsesSnakeCaseKeys(t *testing.T) {
 		t.Fatalf("unmarshal failed: %v", err)
 	}
 
-	required := []string{"schema_version", "collected_at", "os", "battery", "adapter", "power", "controls", "sources"}
-	for _, key := range required {
-		if _, ok := decoded[key]; !ok {
-			t.Fatalf("expected top-level key %q in payload", key)
-		}
-	}
-	if _, ok := decoded["OS"]; ok {
-		t.Fatalf("unexpected legacy PascalCase key found")
-	}
-
-	osPayload, ok := decoded["os"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected os payload to be object")
-	}
-	if _, ok := osPayload["firmware_version"]; !ok {
-		t.Fatalf("expected os.firmware_version key")
-	}
-	if _, ok := osPayload["firmware_source"]; !ok {
-		t.Fatalf("expected os.firmware_source key")
-	}
+	assertTopLevelSnakeCaseKeys(t, decoded)
+	osPayload := assertOSPayload(t, decoded)
+	assertOSFirmwareJSONKeys(t, osPayload)
 }
 
 func assertBaseJSONFields(t *testing.T, j *SystemInfoJSON) {
@@ -81,5 +64,56 @@ func assertHealthAndFirmwareFields(t *testing.T, j *SystemInfoJSON) {
 	}
 	if j.OS.FirmwareSource == "" {
 		t.Fatalf("expected firmware_source to be set")
+	}
+	if j.OS.FirmwareMajor <= 0 {
+		t.Fatalf("expected firmware_major to be set")
+	}
+	if j.OS.FirmwareCompatStatus == "" {
+		t.Fatalf("expected firmware_compat_status to be set")
+	}
+	if j.OS.FirmwareProfileID == "" {
+		t.Fatalf("expected firmware_profile_id to be set")
+	}
+	if j.OS.FirmwareProfileVersion <= 0 {
+		t.Fatalf("expected firmware_profile_version to be set")
+	}
+}
+
+func assertTopLevelSnakeCaseKeys(t *testing.T, decoded map[string]any) {
+	t.Helper()
+	required := []string{"schema_version", "collected_at", "os", "battery", "adapter", "power", "controls", "sources"}
+	for _, key := range required {
+		if _, ok := decoded[key]; !ok {
+			t.Fatalf("expected top-level key %q in payload", key)
+		}
+	}
+	if _, ok := decoded["OS"]; ok {
+		t.Fatalf("unexpected legacy PascalCase key found")
+	}
+}
+
+func assertOSPayload(t *testing.T, decoded map[string]any) map[string]any {
+	t.Helper()
+	osPayload, ok := decoded["os"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected os payload to be object")
+	}
+	return osPayload
+}
+
+func assertOSFirmwareJSONKeys(t *testing.T, osPayload map[string]any) {
+	t.Helper()
+	required := []string{
+		"firmware_version",
+		"firmware_source",
+		"firmware_major",
+		"firmware_compat_status",
+		"firmware_profile_id",
+		"firmware_profile_version",
+	}
+	for _, key := range required {
+		if _, ok := osPayload[key]; !ok {
+			t.Fatalf("expected os.%s key", key)
+		}
 	}
 }

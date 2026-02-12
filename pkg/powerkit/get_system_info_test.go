@@ -33,15 +33,18 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 	})
 
 	currentSMCConfig = smcControlConfig{
-		Firmware:             "Test",
-		AdapterKey:           smc.KeyIsAdapterEnabled,
-		AdapterEnableBytes:   []byte{0x00},
-		AdapterDisableBytes:  []byte{0x08},
-		IsLegacyCharging:     false,
-		ChargingKeyModern:    smc.KeyIsChargingEnabled,
-		ChargingEnableBytes:  []byte{0x00, 0x00, 0x00, 0x00},
-		ChargingDisableBytes: []byte{0x01, 0x00, 0x00, 0x00},
+		Firmware:               "Test",
+		FirmwareProfileID:      profileModernID,
+		FirmwareProfileVersion: defaultProfileVersion,
+		AdapterKey:             smc.KeyIsAdapterEnabled,
+		AdapterEnableBytes:     []byte{0x00},
+		AdapterDisableBytes:    []byte{0x08},
+		IsLegacyCharging:       false,
+		ChargingKeyModern:      smc.KeyIsChargingEnabled,
+		ChargingEnableBytes:    []byte{0x00, 0x00, 0x00, 0x00},
+		ChargingDisableBytes:   []byte{0x01, 0x00, 0x00, 0x00},
 	}
+	currentFirmwareInfo.Major = FirmwareMajorVersionThreshold
 	currentFirmwareInfo.Version = "iBoot-13822.81.10"
 	currentFirmwareInfo.Source = "ioreg_device_tree"
 

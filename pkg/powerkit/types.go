@@ -69,6 +69,15 @@ type OSInfo struct {
 	// FirmwareSource identifies where FirmwareVersion/Firmware major were sourced.
 	// Values: ioreg_device_tree | system_profiler | unknown
 	FirmwareSource string `json:"FirmwareSource"`
+	// FirmwareMajor is the parsed major firmware version used for resolver gating.
+	FirmwareMajor int `json:"FirmwareMajor"`
+	// FirmwareCompatStatus indicates how current firmware relates to tested threshold.
+	// Values: tested | untested_newer | untested_older | unknown
+	FirmwareCompatStatus string `json:"FirmwareCompatStatus"`
+	// FirmwareProfileID is a stable identifier for the selected SMC control profile.
+	FirmwareProfileID string `json:"FirmwareProfileID"`
+	// FirmwareProfileVersion is an independent profile revision number.
+	FirmwareProfileVersion int `json:"FirmwareProfileVersion"`
 
 	// Global: reflect system-wide assertion state (any process)
 	GlobalSystemSleepAllowed  bool `json:"GlobalSystemSleepAllowed"`

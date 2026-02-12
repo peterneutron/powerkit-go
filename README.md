@@ -72,6 +72,14 @@ OS firmware fields:
 - `os.firmware`: resolver mode (`Supported` | `Legacy` | `Unknown`)
 - `os.firmware_version`: normalized detected firmware string (for diagnostics)
 - `os.firmware_source`: `ioreg_device_tree` | `system_profiler` | `unknown`
+- `os.firmware_major`: parsed major firmware version used for resolver decisions
+- `os.firmware_compat_status`: `tested` | `untested_newer` | `untested_older` | `unknown`
+- `os.firmware_profile_id`: stable selected control profile ID (`smc_profile_modern` | `smc_profile_legacy`)
+- `os.firmware_profile_version`: independent numeric profile revision (currently `1`)
+
+Profile naming policy:
+- Profile IDs are stable and do not embed version suffixes.
+- Profile revisions are tracked via `firmware_profile_version`.
 
 Firmware detection order:
 1. IORegistry DeviceTree keys (`system-firmware-version`, then `firmware-version`)

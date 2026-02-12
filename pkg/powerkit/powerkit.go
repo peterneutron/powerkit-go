@@ -74,9 +74,13 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 
 				info := &SystemInfo{
 					OS: OSInfo{
-						Firmware:        currentSMCConfig.Firmware,
-						FirmwareVersion: currentFirmwareInfo.Version,
-						FirmwareSource:  currentFirmwareInfo.Source,
+						Firmware:               currentSMCConfig.Firmware,
+						FirmwareVersion:        currentFirmwareInfo.Version,
+						FirmwareSource:         currentFirmwareInfo.Source,
+						FirmwareMajor:          currentFirmwareInfo.Major,
+						FirmwareCompatStatus:   firmwareCompatStatus(currentFirmwareInfo.Major),
+						FirmwareProfileID:      currentSMCConfig.FirmwareProfileID,
+						FirmwareProfileVersion: currentSMCConfig.FirmwareProfileVersion,
 						// Back-compat: mirror global values
 						GlobalSystemSleepAllowed:  sysAllowedGlobal,
 						GlobalDisplaySleepAllowed: dspAllowedGlobal,
@@ -151,9 +155,13 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 
 	info := &SystemInfo{
 		OS: OSInfo{
-			Firmware:        currentSMCConfig.Firmware,
-			FirmwareVersion: currentFirmwareInfo.Version,
-			FirmwareSource:  currentFirmwareInfo.Source,
+			Firmware:               currentSMCConfig.Firmware,
+			FirmwareVersion:        currentFirmwareInfo.Version,
+			FirmwareSource:         currentFirmwareInfo.Source,
+			FirmwareMajor:          currentFirmwareInfo.Major,
+			FirmwareCompatStatus:   firmwareCompatStatus(currentFirmwareInfo.Major),
+			FirmwareProfileID:      currentSMCConfig.FirmwareProfileID,
+			FirmwareProfileVersion: currentSMCConfig.FirmwareProfileVersion,
 			// Back-compat: mirror global values
 			GlobalSystemSleepAllowed:  sysAllowedGlobal,
 			GlobalDisplaySleepAllowed: dspAllowedGlobal,
