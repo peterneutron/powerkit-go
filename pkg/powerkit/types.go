@@ -64,6 +64,11 @@ type SystemInfo struct {
 // OSInfo holds information about the operating system environment.
 type OSInfo struct {
 	Firmware string `json:"Firmware"` // "Supported", "Legacy" or "Unknown"
+	// FirmwareVersion is the normalized detected firmware version string.
+	FirmwareVersion string `json:"FirmwareVersion"`
+	// FirmwareSource identifies where FirmwareVersion/Firmware major were sourced.
+	// Values: ioreg_device_tree | system_profiler | unknown
+	FirmwareSource string `json:"FirmwareSource"`
 
 	// Global: reflect system-wide assertion state (any process)
 	GlobalSystemSleepAllowed  bool `json:"GlobalSystemSleepAllowed"`

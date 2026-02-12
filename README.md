@@ -68,6 +68,16 @@ Top-level keys:
 - `controls`
 - `sources`
 
+OS firmware fields:
+- `os.firmware`: resolver mode (`Supported` | `Legacy` | `Unknown`)
+- `os.firmware_version`: normalized detected firmware string (for diagnostics)
+- `os.firmware_source`: `ioreg_device_tree` | `system_profiler` | `unknown`
+
+Firmware detection order:
+1. IORegistry DeviceTree keys (`system-firmware-version`, then `firmware-version`)
+2. Fallback to `system_profiler SPHardwareDataType`
+3. If both fail, source is `unknown` and resolver uses unknown-mode behavior
+
 Battery drift metrics:
 - `battery.health.voltage_drift_mv`: max(cell_mv) - min(cell_mv)
 - `battery.health.balance_state`: `balanced` | `slight_imbalance` | `high_imbalance` | `unknown`

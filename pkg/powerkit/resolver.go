@@ -31,11 +31,13 @@ type smcControlConfig struct {
 
 // currentSMCConfig is a package-level variable holding the correct configuration for the running OS.
 var currentSMCConfig smcControlConfig
+var currentFirmwareInfo os.FirmwareInfo
 
 // The init function runs once when the package is imported.
 // It resolves which set of SMC keys and values to use based on the firmware version.
 func init() {
-	firmwareVersion := os.GetFirmwareMajorVersion()
+	currentFirmwareInfo = os.GetFirmwareInfo()
+	firmwareVersion := currentFirmwareInfo.Major
 
 	switch {
 	case firmwareVersion == FirmwareMajorVersionThreshold:

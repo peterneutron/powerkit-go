@@ -19,6 +19,8 @@ type SystemInfoJSON struct {
 
 type OSJSON struct {
 	Firmware        string              `json:"firmware"`
+	FirmwareVersion string              `json:"firmware_version"`
+	FirmwareSource  string              `json:"firmware_source"`
 	LowPowerMode    LowPowerModeJSON    `json:"low_power_mode"`
 	SleepAssertions SleepAssertionsJSON `json:"sleep_assertions"`
 }
@@ -159,7 +161,9 @@ func (s *SystemInfo) ToJSON() SystemInfoJSON {
 		SchemaVersion: jsonSchemaVersion,
 		CollectedAt:   collectedAt.UTC().Format(time.RFC3339),
 		OS: OSJSON{
-			Firmware: s.OS.Firmware,
+			Firmware:        s.OS.Firmware,
+			FirmwareVersion: s.OS.FirmwareVersion,
+			FirmwareSource:  s.OS.FirmwareSource,
 			LowPowerMode: LowPowerModeJSON{
 				Enabled:   s.OS.LowPowerMode.Enabled,
 				Available: s.OS.LowPowerMode.Available,

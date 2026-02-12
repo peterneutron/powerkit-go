@@ -19,6 +19,7 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 	oldPowerdActive := powerdIsActiveFn
 	oldGetLPM := getLowPowerModeFn
 	oldConfig := currentSMCConfig
+	oldFirmwareInfo := currentFirmwareInfo
 
 	t.Cleanup(func() {
 		fetchIOKitData = oldFetchIOKit
@@ -28,6 +29,7 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 		powerdIsActiveFn = oldPowerdActive
 		getLowPowerModeFn = oldGetLPM
 		currentSMCConfig = oldConfig
+		currentFirmwareInfo = oldFirmwareInfo
 	})
 
 	currentSMCConfig = smcControlConfig{
@@ -40,6 +42,8 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 		ChargingEnableBytes:  []byte{0x00, 0x00, 0x00, 0x00},
 		ChargingDisableBytes: []byte{0x01, 0x00, 0x00, 0x00},
 	}
+	currentFirmwareInfo.Version = "iBoot-13822.81.10"
+	currentFirmwareInfo.Source = "ioreg_device_tree"
 
 	var observedForce bool
 	fetchIOKitData = func(force bool) (*iokit.RawData, error) {

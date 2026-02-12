@@ -74,7 +74,9 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 
 				info := &SystemInfo{
 					OS: OSInfo{
-						Firmware: currentSMCConfig.Firmware,
+						Firmware:        currentSMCConfig.Firmware,
+						FirmwareVersion: currentFirmwareInfo.Version,
+						FirmwareSource:  currentFirmwareInfo.Source,
 						// Back-compat: mirror global values
 						GlobalSystemSleepAllowed:  sysAllowedGlobal,
 						GlobalDisplaySleepAllowed: dspAllowedGlobal,
@@ -149,7 +151,9 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 
 	info := &SystemInfo{
 		OS: OSInfo{
-			Firmware: currentSMCConfig.Firmware,
+			Firmware:        currentSMCConfig.Firmware,
+			FirmwareVersion: currentFirmwareInfo.Version,
+			FirmwareSource:  currentFirmwareInfo.Source,
 			// Back-compat: mirror global values
 			GlobalSystemSleepAllowed:  sysAllowedGlobal,
 			GlobalDisplaySleepAllowed: dspAllowedGlobal,
