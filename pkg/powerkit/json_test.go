@@ -24,6 +24,9 @@ func TestToJSONIncludesSchemaAndSources(t *testing.T) {
 	if j.Sources.AdapterTelemetry.Source == "" || j.Sources.AdapterTelemetry.Reason == "" {
 		t.Fatalf("expected adapter telemetry provenance, got %+v", j.Sources.AdapterTelemetry)
 	}
+	if j.Battery.Health.BalanceState == "" {
+		t.Fatalf("expected balance_state to be set")
+	}
 }
 
 func TestToJSONUsesSnakeCaseKeys(t *testing.T) {

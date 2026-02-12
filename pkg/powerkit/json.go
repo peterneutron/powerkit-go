@@ -67,9 +67,11 @@ type BatteryCapacityJSON struct {
 }
 
 type BatteryHealthJSON struct {
-	ByMaxCapacityPercent     int `json:"by_max_capacity_percent"`
-	ByNominalCapacityPercent int `json:"by_nominal_capacity_percent"`
-	ConditionAdjustedPercent int `json:"condition_adjusted_percent"`
+	ByMaxCapacityPercent     int    `json:"by_max_capacity_percent"`
+	ByNominalCapacityPercent int    `json:"by_nominal_capacity_percent"`
+	ConditionAdjustedPercent int    `json:"condition_adjusted_percent"`
+	VoltageDriftMV           int    `json:"voltage_drift_mv"`
+	BalanceState             string `json:"balance_state"`
 }
 
 type BatterySensorsJSON struct {
@@ -190,6 +192,7 @@ func (s *SystemInfo) ToJSON() SystemInfoJSON {
 			},
 		},
 	}
+	out.Battery.Health.BalanceState = string(BatteryBalanceUnknown)
 
 	if s.IOKit != nil {
 		out.Battery.State.IsCharging = s.IOKit.State.IsCharging
@@ -205,6 +208,8 @@ func (s *SystemInfo) ToJSON() SystemInfoJSON {
 		out.Battery.Health.ByMaxCapacityPercent = s.IOKit.Calculations.HealthByMaxCapacity
 		out.Battery.Health.ByNominalCapacityPercent = s.IOKit.Calculations.HealthByNominalCapacity
 		out.Battery.Health.ConditionAdjustedPercent = s.IOKit.Calculations.ConditionAdjustedHealth
+		out.Battery.Health.VoltageDriftMV = s.IOKit.Calculations.VoltageDriftMV
+		out.Battery.Health.BalanceState = string(s.IOKit.Calculations.BalanceState)
 		out.Battery.Sensors.VoltageMV = int(s.IOKit.Battery.Voltage * 1000)
 		out.Battery.Sensors.AmperageMA = int(s.IOKit.Battery.Amperage * 1000)
 		out.Battery.Sensors.TemperatureC = s.IOKit.Battery.Temperature

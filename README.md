@@ -68,6 +68,15 @@ Top-level keys:
 - `controls`
 - `sources`
 
+Battery drift metrics:
+- `battery.health.voltage_drift_mv`: max(cell_mv) - min(cell_mv)
+- `battery.health.balance_state`: `balanced` | `slight_imbalance` | `high_imbalance` | `unknown`
+- Thresholds:
+  - `balanced`: `<= 10 mV`
+  - `slight_imbalance`: `11..30 mV`
+  - `high_imbalance`: `> 30 mV`
+  - `unknown`: fewer than 2 cell voltages
+
 Telemetry provenance:
 - `sources.adapter_telemetry.source`: `iokit` | `smc_fallback` | `unavailable`
 - `sources.adapter_telemetry.reason`: `none` | `no_adapter` | `missing_iokit` | `invalid_iokit` | `forced` | `smc_error`

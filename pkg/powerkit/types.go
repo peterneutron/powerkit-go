@@ -132,13 +132,24 @@ type IOKitAdapter struct {
 
 // IOKitCalculations holds all health and power metrics derived from IOKit data.
 type IOKitCalculations struct {
-	HealthByMaxCapacity     int     `json:"HealthByMaxCapacity"`
-	HealthByNominalCapacity int     `json:"HealthByNominalCapacity"`
-	ConditionAdjustedHealth int     `json:"ConditionAdjustedHealth"`
-	AdapterPower            float64 `json:"AdapterPower"`
-	BatteryPower            float64 `json:"BatteryPower"`
-	SystemPower             float64 `json:"SystemPower"`
+	HealthByMaxCapacity     int                 `json:"HealthByMaxCapacity"`
+	HealthByNominalCapacity int                 `json:"HealthByNominalCapacity"`
+	ConditionAdjustedHealth int                 `json:"ConditionAdjustedHealth"`
+	VoltageDriftMV          int                 `json:"VoltageDriftMV"`
+	BalanceState            BatteryBalanceState `json:"BalanceState"`
+	AdapterPower            float64             `json:"AdapterPower"`
+	BatteryPower            float64             `json:"BatteryPower"`
+	SystemPower             float64             `json:"SystemPower"`
 }
+
+type BatteryBalanceState string
+
+const (
+	BatteryBalanceUnknown         BatteryBalanceState = "unknown"
+	BatteryBalanceBalanced        BatteryBalanceState = "balanced"
+	BatteryBalanceSlightImbalance BatteryBalanceState = "slight_imbalance"
+	BatteryBalanceHighImbalance   BatteryBalanceState = "high_imbalance"
+)
 
 // --- SMC-Specific Data Structures ---
 
