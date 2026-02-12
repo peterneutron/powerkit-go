@@ -36,7 +36,7 @@ func handleWatchCommand() {
 		fmt.Printf("--- Event Received at %s ---\n", time.Now().Format(time.RFC3339))
 		fmt.Printf("Event Type: %s\n\n", EventTypeToString(event.Type))
 		if event.Info != nil {
-			jsonData, err := json.MarshalIndent(event.Info, "", "  ")
+			jsonData, err := json.MarshalIndent(event.Info.ToJSON(), "", "  ")
 			if err != nil {
 				log.Printf("Error formatting data to JSON: %v", err)
 				continue
@@ -59,7 +59,7 @@ func handleDumpCommand(source string, args []string) {
 		log.Fatalf("Error getting hardware info: %v", err)
 	}
 
-	jsonData, err := json.MarshalIndent(info, "", "  ")
+	jsonData, err := json.MarshalIndent(info.ToJSON(), "", "  ")
 	if err != nil {
 		log.Fatalf("Error formatting data to JSON: %v", err)
 	}

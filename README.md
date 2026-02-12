@@ -22,6 +22,7 @@ Public package: `github.com/peterneutron/powerkit-go/pkg/powerkit`
 - `GetSystemInfoContext(ctx, opts ...FetchOptions) (*SystemInfo, error)`
 - `GetRawSMCValues(keys []string) (map[string]RawSMCValue, error)`
 - `StreamSystemEvents() (<-chan SystemEvent, error)`
+- `(*SystemInfo).ToJSON() SystemInfoJSON`
 
 ### Control APIs (privileged)
 These return `ErrPermissionRequired` when not root.
@@ -51,6 +52,32 @@ Context variants are available for mutating calls (`*Context` methods).
 - `ErrPermissionRequired`
 - `ErrNotSupported`
 - `ErrTransientIO`
+
+## JSON Contract (v1)
+- JSON output is now a single stable domain-first schema with snake_case keys.
+- Versioning is explicit via `schema_version` (no type/root suffixes).
+- Legacy PascalCase JSON is removed; pin an older version if you need the previous shape.
+
+Top-level keys:
+- `schema_version`
+- `collected_at`
+- `os`
+- `battery`
+- `adapter`
+- `power`
+- `controls`
+- `sources`
+
+Telemetry provenance:
+- `sources.adapter_telemetry.source`: `iokit` | `smc_fallback` | `unavailable`
+- `sources.adapter_telemetry.reason`: `none` | `no_adapter` | `missing_iokit` | `invalid_iokit` | `forced` | `smc_error`
+- `sources.adapter_telemetry.available`: boolean
+- `sources.adapter_telemetry.force_fallback`: boolean
+
+Connection-aware fallback behavior:
+- When adapter is disconnected, telemetry fallback is skipped and `reason=no_adapter`.
+- When connected, invalid/missing IOKit telemetry falls back to SMC.
+- `ForceTelemetryFallback` still forces SMC adapter telemetry when connected.
 
 ## Minimal Example
 ```go

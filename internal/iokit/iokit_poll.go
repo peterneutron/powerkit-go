@@ -181,6 +181,14 @@ import (
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
+const (
+	minPlausibleAdapterMilliVolts = 4500
+	maxPlausibleAdapterMilliVolts = 50000
+	minPlausibleAdapterMilliAmps  = 50
+	maxPlausibleAdapterMilliAmps  = 10000
+	maxPlausibleAdapterMilliWatts = 200000
+)
+
 var (
 	getAllBatteryInfoFn = func(info *C.c_battery_info) C.int {
 		return C.get_all_battery_info(info)
@@ -198,8 +206,6 @@ func FetchData(forceFallback bool) (*RawData, error) {
 	if ret != 0 {
 		return nil, fmt.Errorf("iokit query failed with C error code: %d", ret)
 	}
-
-	telemetryAvailable := cInfo.has_power_telemetry != 0 && !forceFallback
 
 	data := &RawData{
 
@@ -226,10 +232,13 @@ func FetchData(forceFallback bool) (*RawData, error) {
 		AdapterDesc:        C.GoString(&cInfo.adapter_description[0]),
 		SourceVoltage:      int(cInfo.source_voltage),
 		SourceAmperage:     int(cInfo.source_amperage),
-		TelemetryAvailable: telemetryAvailable,
+		TelemetryAvailable: false,
+		TelemetrySource:    AdapterTelemetrySourceUnavailable,
+		TelemetryReason:    AdapterTelemetryReasonMissingIOKit,
+		ForceFallback:      forceFallback,
 	}
 
-	applyAdapterTelemetryFallback(data, telemetryAvailable)
+	evaluateAdapterTelemetry(data, cInfo.has_power_telemetry != 0, forceFallback)
 
 	if cInfo.cell_voltage_count > 0 {
 		data.CellVoltages = make([]int, cInfo.cell_voltage_count)
@@ -241,18 +250,76 @@ func FetchData(forceFallback bool) (*RawData, error) {
 	return data, nil
 }
 
-func applyAdapterTelemetryFallback(data *RawData, telemetryAvailable bool) {
-	if telemetryAvailable {
+func evaluateAdapterTelemetry(data *RawData, hasPowerTelemetry bool, forceFallback bool) {
+	if !data.IsConnected {
+		data.TelemetryAvailable = false
+		data.TelemetrySource = AdapterTelemetrySourceUnavailable
+		data.TelemetryReason = AdapterTelemetryReasonNoAdapter
 		return
 	}
+
+	if forceFallback {
+		applyAdapterTelemetryFallback(data, AdapterTelemetryReasonForced)
+		return
+	}
+
+	reason := telemetryInvalidReason(data, hasPowerTelemetry)
+	if reason == AdapterTelemetryReasonNone {
+		data.TelemetryAvailable = true
+		data.TelemetrySource = AdapterTelemetrySourceIOKit
+		data.TelemetryReason = AdapterTelemetryReasonNone
+		return
+	}
+
+	applyAdapterTelemetryFallback(data, reason)
+}
+
+func telemetryInvalidReason(data *RawData, hasPowerTelemetry bool) AdapterTelemetryReason {
+	if !hasPowerTelemetry {
+		return AdapterTelemetryReasonMissingIOKit
+	}
+	if data.SourceVoltage <= 0 || data.SourceAmperage <= 0 {
+		return AdapterTelemetryReasonInvalidIOKit
+	}
+	if data.SourceVoltage < minPlausibleAdapterMilliVolts || data.SourceVoltage > maxPlausibleAdapterMilliVolts {
+		return AdapterTelemetryReasonInvalidIOKit
+	}
+	if data.SourceAmperage < minPlausibleAdapterMilliAmps || data.SourceAmperage > maxPlausibleAdapterMilliAmps {
+		return AdapterTelemetryReasonInvalidIOKit
+	}
+
+	milliWatts := int64(data.SourceVoltage) * int64(data.SourceAmperage) / 1000
+	if milliWatts <= 0 || milliWatts > maxPlausibleAdapterMilliWatts {
+		return AdapterTelemetryReasonInvalidIOKit
+	}
+	return AdapterTelemetryReasonNone
+}
+
+func applyAdapterTelemetryFallback(data *RawData, triggerReason AdapterTelemetryReason) {
 	fallback, err := smcFetchDataFn([]string{smc.KeyAdapterVoltage, smc.KeyAdapterCurrent})
 	if err != nil {
+		data.TelemetryAvailable = false
+		data.TelemetrySource = AdapterTelemetrySourceUnavailable
+		data.TelemetryReason = AdapterTelemetryReasonSMCError
 		return
 	}
+	haveVoltage := false
+	haveAmperage := false
 	if v, ok := fallback[smc.KeyAdapterVoltage]; ok {
 		data.SourceVoltage = int(math.Round(v * 1000.0))
+		haveVoltage = true
 	}
 	if a, ok := fallback[smc.KeyAdapterCurrent]; ok {
 		data.SourceAmperage = int(math.Round(a * 1000.0))
+		haveAmperage = true
 	}
+	if !haveVoltage || !haveAmperage || data.SourceVoltage <= 0 || data.SourceAmperage <= 0 {
+		data.TelemetryAvailable = false
+		data.TelemetrySource = AdapterTelemetrySourceUnavailable
+		data.TelemetryReason = AdapterTelemetryReasonSMCError
+		return
+	}
+	data.TelemetryAvailable = true
+	data.TelemetrySource = AdapterTelemetrySourceSMCFallback
+	data.TelemetryReason = triggerReason
 }

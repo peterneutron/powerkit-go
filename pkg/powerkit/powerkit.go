@@ -85,6 +85,14 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 					IOKit: newIOKitData(iokitRawData),
 					SMC:   nil, // SMC data is not queried in event streams.
 				}
+				initSystemInfoMetadata(info)
+				info.iokitQueried = true
+				info.iokitAvailable = true
+				info.smcQueried = false
+				info.smcAvailable = false
+				info.adapterTelemetrySource = string(iokitRawData.TelemetrySource)
+				info.adapterTelemetryReason = string(iokitRawData.TelemetryReason)
+				info.forceTelemetryFallback = iokitRawData.ForceFallback
 				calculateDerivedMetrics(info) // Populate calculated fields.
 
 				// Build the final public event.
@@ -150,6 +158,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 			LowPowerMode:              LowPowerModeInfo{Enabled: lpmEnabled, Available: lpmAvailable},
 		},
 	}
+	initSystemInfoMetadata(info)
 
 	if options.QueryIOKit {
 		getIOKitInfo(info, options)

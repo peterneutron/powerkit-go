@@ -2,6 +2,8 @@
 
 package powerkit
 
+import "time"
+
 // --- Event Streaming Structs ---
 
 // EventType defines the kind of system event that occurred.
@@ -46,6 +48,15 @@ type SystemInfo struct {
 	OS    OSInfo     `json:"OS"`
 	IOKit *IOKitData `json:"IOKit,omitempty"`
 	SMC   *SMCData   `json:"SMC,omitempty"`
+
+	collectedAt            time.Time
+	iokitQueried           bool
+	smcQueried             bool
+	iokitAvailable         bool
+	smcAvailable           bool
+	adapterTelemetrySource string
+	adapterTelemetryReason string
+	forceTelemetryFallback bool
 }
 
 // --- OS-Specific Data Structures ---
