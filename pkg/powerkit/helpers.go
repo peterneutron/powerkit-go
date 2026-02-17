@@ -5,6 +5,7 @@ package powerkit
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"log"
 
@@ -65,16 +66,27 @@ func setCharging(enable bool) error {
 
 // Create a helper for fetching IOKit data
 func getIOKitInfo(info *SystemInfo, options FetchOptions) {
+	info.iokitQueried = true
 	iokitRawData, err := fetchIOKitData(options.ForceTelemetryFallback)
 	if err != nil {
 		log.Printf("Warning: IOKit data fetch failed, continuing without it: %v", err)
+		info.iokitAvailable = false
 		return
 	}
 	info.IOKit = newIOKitData(iokitRawData)
+	info.iokitAvailable = true
+	if iokitRawData.TelemetrySource != "" {
+		info.adapterTelemetrySource = string(iokitRawData.TelemetrySource)
+	}
+	if iokitRawData.TelemetryReason != "" {
+		info.adapterTelemetryReason = string(iokitRawData.TelemetryReason)
+	}
+	info.forceTelemetryFallback = options.ForceTelemetryFallback || iokitRawData.ForceFallback
 }
 
 // Create a helper for fetching SMC data
 func getSMCInfo(info *SystemInfo) {
+	info.smcQueried = true
 	// Build SMC key lists: separate numeric sensor keys (for float decode)
 	// from control/state keys that are not decodable to float.
 	floatKeys := []string{
@@ -97,7 +109,15 @@ func getSMCInfo(info *SystemInfo) {
 	smcRawResults, err2 := fetchSMCRawData(rawKeys)
 	if err1 != nil || err2 != nil {
 		log.Printf("Warning: SMC data fetch failed, continuing without it. FltErr: %v, RawErr: %v", err1, err2)
+		info.smcAvailable = false
 		return
 	}
 	info.SMC = newSMCData(smcFloatResults, smcRawResults)
+	info.smcAvailable = true
+}
+
+func initSystemInfoMetadata(info *SystemInfo) {
+	info.collectedAt = time.Now().UTC()
+	info.adapterTelemetrySource = "unavailable"
+	info.adapterTelemetryReason = "none"
 }

@@ -21,6 +21,8 @@ func calculateIOKitMetrics(d *IOKitData) {
 
 // calculateHealthMetrics computes various battery health percentages.
 func calculateHealthMetrics(b *IOKitBattery, c *IOKitCalculations) {
+	c.VoltageDriftMV, c.BalanceState = computeVoltageDrift(b.IndividualCellVoltages)
+
 	if b.DesignCapacity <= 0 {
 		return
 	}
@@ -47,6 +49,22 @@ func calculateHealthMetrics(b *IOKitBattery, c *IOKitCalculations) {
 		}
 	}
 	c.ConditionAdjustedHealth = int(math.Round(float64(c.HealthByNominalCapacity) + conditionModifier))
+}
+
+func computeVoltageDrift(cellVoltages []int) (driftMV int, state BatteryBalanceState) {
+	if len(cellVoltages) < 2 {
+		return 0, BatteryBalanceUnknown
+	}
+	minV, maxV := findMinMax(cellVoltages)
+	drift := maxV - minV
+	switch {
+	case drift <= 10:
+		return drift, BatteryBalanceBalanced
+	case drift <= 30:
+		return drift, BatteryBalanceSlightImbalance
+	default:
+		return drift, BatteryBalanceHighImbalance
+	}
 }
 
 // calculateIOKitPower computes power metrics based on IOKit data.

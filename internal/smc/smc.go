@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 // Package smc provides internal access to the System Management Controller.
 package smc
@@ -130,6 +129,9 @@ kern_return_t smc_read_key_raw(
     // Export the raw results instead of decoding
     key_to_str(input.keyInfo.dataType, dataTypeResult);
     *dataSizeResult = input.keyInfo.dataSize;
+    if (*dataSizeResult > 32) {
+        return kIOReturnBadArgument;
+    }
     memcpy(bytesResult, output.bytes, *dataSizeResult);
 
     return KERN_SUCCESS;
@@ -156,6 +158,9 @@ kern_return_t smc_write_key(
     }
 
     SMCKeyData_keyInfo_t keyInfo = output.keyInfo;
+    if (keyInfo.dataSize > 32) {
+        return kIOReturnBadArgument;
+    }
 
     if (dataSize != keyInfo.dataSize) {
         return kIOReturnBadArgument;
@@ -275,7 +280,6 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 	results := make(map[string]RawSMCValue, len(keys))
 	for _, key := range keys {
 		ckey := C.CString(key)
-		defer C.free(unsafe.Pointer(ckey))
 
 		var dataTypeResult [5]C.char
 		var bytesResult [32]C.uchar
@@ -299,6 +303,7 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 				Data:     goBytes,
 			}
 		}
+		C.free(unsafe.Pointer(ckey))
 	}
 
 	if len(results) == 0 {

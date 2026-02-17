@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 package powerkit
 
@@ -62,6 +61,10 @@ const (
 // SetAdapterState sets the desired adapter state (On, Off, or Toggle).
 // This function requires root privileges.
 func SetAdapterState(action AdapterAction) error {
+	if err := requireRoot("set adapter state"); err != nil {
+		return err
+	}
+
 	key := currentSMCConfig.AdapterKey
 
 	// Internal helper without side effects.
@@ -96,6 +99,10 @@ func SetAdapterState(action AdapterAction) error {
 // SetChargingState sets the desired charging state (On, Off, or Toggle).
 // This function requires root privileges.
 func SetChargingState(action ChargingAction) error {
+	if err := requireRoot("set charging state"); err != nil {
+		return err
+	}
+
 	switch action {
 	case ChargingActionOn:
 		return setCharging(true)
@@ -131,7 +138,28 @@ func SetChargingState(action ChargingAction) error {
 // SetMagsafeLEDState writes the single-byte LED state to the SMC.
 // This uses the common 1-byte ACLC format.
 func SetMagsafeLEDState(state MagsafeLEDState) error {
+	if err := requireRoot("set magsafe LED state"); err != nil {
+		return err
+	}
 	return smc.WriteData(smc.KeyMagsafeLED, []byte{byte(state)})
+}
+
+// MagsafeStatus reports MagSafe LED capability and current state.
+type MagsafeStatus struct {
+	State     MagsafeLEDState
+	Available bool
+}
+
+// GetMagsafeStatus returns the current MagSafe LED status.
+func GetMagsafeStatus() (MagsafeStatus, error) {
+	state, available, err := GetMagsafeLEDState()
+	if err != nil {
+		return MagsafeStatus{}, err
+	}
+	if !available {
+		return MagsafeStatus{State: state, Available: false}, ErrNotSupported
+	}
+	return MagsafeStatus{State: state, Available: true}, nil
 }
 
 // GetMagsafeLEDState reads the single-byte LED state. It returns:
@@ -172,7 +200,7 @@ func IsMagsafeCharging() (bool, error) {
 		return false, fmt.Errorf("could not determine Magsafe charging state: %w", err)
 	}
 	if !available {
-		return false, fmt.Errorf("magsafe LED not available")
+		return false, ErrNotSupported
 	}
 	return state == LEDAmber, nil
 }

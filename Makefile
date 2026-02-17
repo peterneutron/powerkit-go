@@ -1,4 +1,4 @@
-.PHONY: build tests
+.PHONY: build tests vet lint verify
 
 build:
 	mkdir -p build
@@ -6,3 +6,11 @@ build:
 
 tests:
 	go test ./...
+
+vet:
+	go vet ./...
+
+lint:
+	golangci-lint run
+
+verify: tests vet

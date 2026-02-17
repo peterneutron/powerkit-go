@@ -1,7 +1,8 @@
 //go:build darwin
-// +build darwin
 
 package powerkit
+
+import "time"
 
 // --- Event Streaming Structs ---
 
@@ -47,6 +48,15 @@ type SystemInfo struct {
 	OS    OSInfo     `json:"OS"`
 	IOKit *IOKitData `json:"IOKit,omitempty"`
 	SMC   *SMCData   `json:"SMC,omitempty"`
+
+	collectedAt            time.Time
+	iokitQueried           bool
+	smcQueried             bool
+	iokitAvailable         bool
+	smcAvailable           bool
+	adapterTelemetrySource string
+	adapterTelemetryReason string
+	forceTelemetryFallback bool
 }
 
 // --- OS-Specific Data Structures ---
@@ -54,6 +64,20 @@ type SystemInfo struct {
 // OSInfo holds information about the operating system environment.
 type OSInfo struct {
 	Firmware string `json:"Firmware"` // "Supported", "Legacy" or "Unknown"
+	// FirmwareVersion is the normalized detected firmware version string.
+	FirmwareVersion string `json:"FirmwareVersion"`
+	// FirmwareSource identifies where FirmwareVersion/Firmware major were sourced.
+	// Values: ioreg_device_tree | system_profiler | unknown
+	FirmwareSource string `json:"FirmwareSource"`
+	// FirmwareMajor is the parsed major firmware version used for resolver gating.
+	FirmwareMajor int `json:"FirmwareMajor"`
+	// FirmwareCompatStatus indicates how current firmware relates to tested threshold.
+	// Values: tested | untested_newer | untested_older | unknown
+	FirmwareCompatStatus string `json:"FirmwareCompatStatus"`
+	// FirmwareProfileID is a stable identifier for the selected SMC control profile.
+	FirmwareProfileID string `json:"FirmwareProfileID"`
+	// FirmwareProfileVersion is an independent profile revision number.
+	FirmwareProfileVersion int `json:"FirmwareProfileVersion"`
 
 	// Global: reflect system-wide assertion state (any process)
 	GlobalSystemSleepAllowed  bool `json:"GlobalSystemSleepAllowed"`
@@ -122,13 +146,24 @@ type IOKitAdapter struct {
 
 // IOKitCalculations holds all health and power metrics derived from IOKit data.
 type IOKitCalculations struct {
-	HealthByMaxCapacity     int     `json:"HealthByMaxCapacity"`
-	HealthByNominalCapacity int     `json:"HealthByNominalCapacity"`
-	ConditionAdjustedHealth int     `json:"ConditionAdjustedHealth"`
-	AdapterPower            float64 `json:"AdapterPower"`
-	BatteryPower            float64 `json:"BatteryPower"`
-	SystemPower             float64 `json:"SystemPower"`
+	HealthByMaxCapacity     int                 `json:"HealthByMaxCapacity"`
+	HealthByNominalCapacity int                 `json:"HealthByNominalCapacity"`
+	ConditionAdjustedHealth int                 `json:"ConditionAdjustedHealth"`
+	VoltageDriftMV          int                 `json:"VoltageDriftMV"`
+	BalanceState            BatteryBalanceState `json:"BalanceState"`
+	AdapterPower            float64             `json:"AdapterPower"`
+	BatteryPower            float64             `json:"BatteryPower"`
+	SystemPower             float64             `json:"SystemPower"`
 }
+
+type BatteryBalanceState string
+
+const (
+	BatteryBalanceUnknown         BatteryBalanceState = "unknown"
+	BatteryBalanceBalanced        BatteryBalanceState = "balanced"
+	BatteryBalanceSlightImbalance BatteryBalanceState = "slight_imbalance"
+	BatteryBalanceHighImbalance   BatteryBalanceState = "high_imbalance"
+)
 
 // --- SMC-Specific Data Structures ---
 

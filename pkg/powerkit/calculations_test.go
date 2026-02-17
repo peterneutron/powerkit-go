@@ -170,3 +170,32 @@ func TestCalculateSMCMetrics(t *testing.T) {
 		})
 	}
 }
+
+func TestComputeVoltageDrift(t *testing.T) {
+	tests := []struct {
+		name      string
+		cells     []int
+		wantDrift int
+		wantState BatteryBalanceState
+	}{
+		{name: "NoCells", cells: nil, wantDrift: 0, wantState: BatteryBalanceUnknown},
+		{name: "SingleCell", cells: []int{4020}, wantDrift: 0, wantState: BatteryBalanceUnknown},
+		{name: "BalancedZero", cells: []int{4000, 4000}, wantDrift: 0, wantState: BatteryBalanceBalanced},
+		{name: "BalancedTen", cells: []int{4000, 4010}, wantDrift: 10, wantState: BatteryBalanceBalanced},
+		{name: "SlightEleven", cells: []int{4000, 4011}, wantDrift: 11, wantState: BatteryBalanceSlightImbalance},
+		{name: "SlightThirty", cells: []int{4000, 4030}, wantDrift: 30, wantState: BatteryBalanceSlightImbalance},
+		{name: "HighThirtyOne", cells: []int{4000, 4031}, wantDrift: 31, wantState: BatteryBalanceHighImbalance},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotDrift, gotState := computeVoltageDrift(tc.cells)
+			if gotDrift != tc.wantDrift {
+				t.Fatalf("drift mismatch: want %d, got %d", tc.wantDrift, gotDrift)
+			}
+			if gotState != tc.wantState {
+				t.Fatalf("state mismatch: want %q, got %q", tc.wantState, gotState)
+			}
+		})
+	}
+}

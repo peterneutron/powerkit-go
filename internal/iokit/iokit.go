@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 // Package iokit provides internal access to IOKit for both polling
 // and streaming power source data.
@@ -27,6 +26,25 @@ type InternalEvent struct {
 
 // Events is the single, unified channel for all notifications from the C layer.
 var Events = make(chan InternalEvent, 2) // Buffer of 2 is safe
+
+type AdapterTelemetrySource string
+
+const (
+	AdapterTelemetrySourceIOKit       AdapterTelemetrySource = "iokit"
+	AdapterTelemetrySourceSMCFallback AdapterTelemetrySource = "smc_fallback"
+	AdapterTelemetrySourceUnavailable AdapterTelemetrySource = "unavailable"
+)
+
+type AdapterTelemetryReason string
+
+const (
+	AdapterTelemetryReasonNone         AdapterTelemetryReason = "none"
+	AdapterTelemetryReasonNoAdapter    AdapterTelemetryReason = "no_adapter"
+	AdapterTelemetryReasonMissingIOKit AdapterTelemetryReason = "missing_iokit"
+	AdapterTelemetryReasonInvalidIOKit AdapterTelemetryReason = "invalid_iokit"
+	AdapterTelemetryReasonForced       AdapterTelemetryReason = "forced"
+	AdapterTelemetryReasonSMCError     AdapterTelemetryReason = "smc_error"
+)
 
 // RawData holds the unprocessed data returned from the IOKit C functions.
 // This struct is intended for internal use within the library.
@@ -57,6 +75,9 @@ type RawData struct {
 	SourceAmperage     int
 	CellVoltages       []int
 	TelemetryAvailable bool
+	TelemetrySource    AdapterTelemetrySource
+	TelemetryReason    AdapterTelemetryReason
+	ForceFallback      bool
 }
 
 // --- Streaming Globals ---

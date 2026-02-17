@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 // Package powerd provides a simple, high-level wrapper around macOS power
 // assertions to prevent the system or display from sleeping using IOPMLib.

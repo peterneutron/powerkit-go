@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 // Package os provides internal OS helpers such as Low Power Mode control.
 package os
