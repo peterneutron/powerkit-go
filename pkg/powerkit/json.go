@@ -6,6 +6,7 @@ import "time"
 
 const jsonSchemaVersion = "1.0.0"
 
+// SystemInfoJSON is the stable JSON projection of SystemInfo.
 type SystemInfoJSON struct {
 	SchemaVersion string       `json:"schema_version"`
 	CollectedAt   string       `json:"collected_at"`
@@ -17,6 +18,7 @@ type SystemInfoJSON struct {
 	Sources       SourcesJSON  `json:"sources"`
 }
 
+// OSJSON contains OS-level status and firmware metadata.
 type OSJSON struct {
 	Firmware               string              `json:"firmware"`
 	FirmwareVersion        string              `json:"firmware_version"`
@@ -29,21 +31,25 @@ type OSJSON struct {
 	SleepAssertions        SleepAssertionsJSON `json:"sleep_assertions"`
 }
 
+// LowPowerModeJSON models Low Power Mode state and availability.
 type LowPowerModeJSON struct {
 	Enabled   bool `json:"enabled"`
 	Available bool `json:"available"`
 }
 
+// SleepAssertionsJSON groups global and app-local sleep assertion views.
 type SleepAssertionsJSON struct {
 	Global SleepAssertionStateJSON `json:"global"`
 	App    SleepAssertionStateJSON `json:"app"`
 }
 
+// SleepAssertionStateJSON reports whether system/display sleep are allowed.
 type SleepAssertionStateJSON struct {
 	SystemSleepAllowed  bool `json:"system_sleep_allowed"`
 	DisplaySleepAllowed bool `json:"display_sleep_allowed"`
 }
 
+// BatteryJSON contains battery state, identity, capacity, health, sensors, and time data.
 type BatteryJSON struct {
 	State    BatteryStateJSON    `json:"state"`
 	Identity BatteryIdentityJSON `json:"identity"`
@@ -53,17 +59,20 @@ type BatteryJSON struct {
 	Time     BatteryTimeJSON     `json:"time"`
 }
 
+// BatteryStateJSON reports battery connection and charging state flags.
 type BatteryStateJSON struct {
 	IsCharging   bool `json:"is_charging"`
 	IsConnected  bool `json:"is_connected"`
 	FullyCharged bool `json:"fully_charged"`
 }
 
+// BatteryIdentityJSON identifies the installed battery pack.
 type BatteryIdentityJSON struct {
 	SerialNumber string `json:"serial_number"`
 	DeviceName   string `json:"device_name"`
 }
 
+// BatteryCapacityJSON exposes key battery capacity measurements.
 type BatteryCapacityJSON struct {
 	CurrentPercent int `json:"current_percent"`
 	CurrentRaw     int `json:"current_raw"`
@@ -72,6 +81,7 @@ type BatteryCapacityJSON struct {
 	Nominal        int `json:"nominal"`
 }
 
+// BatteryHealthJSON exposes normalized battery health indicators.
 type BatteryHealthJSON struct {
 	ByMaxCapacityPercent     int    `json:"by_max_capacity_percent"`
 	ByNominalCapacityPercent int    `json:"by_nominal_capacity_percent"`
@@ -80,6 +90,7 @@ type BatteryHealthJSON struct {
 	BalanceState             string `json:"balance_state"`
 }
 
+// BatterySensorsJSON contains live battery sensor readings.
 type BatterySensorsJSON struct {
 	VoltageMV      int     `json:"voltage_mv"`
 	AmperageMA     int     `json:"amperage_ma"`
@@ -87,11 +98,13 @@ type BatterySensorsJSON struct {
 	CellVoltagesMV []int   `json:"cell_voltages_mv"`
 }
 
+// BatteryTimeJSON reports estimated charge/discharge durations in minutes.
 type BatteryTimeJSON struct {
 	ToEmptyMin int `json:"to_empty_min"`
 	ToFullMin  int `json:"to_full_min"`
 }
 
+// AdapterJSON contains adapter identity, ratings, input telemetry, and computed power.
 type AdapterJSON struct {
 	Description string            `json:"description"`
 	Rating      AdapterRatingJSON `json:"rating"`
@@ -99,51 +112,60 @@ type AdapterJSON struct {
 	PowerW      float64           `json:"power_w"`
 }
 
+// AdapterRatingJSON describes nominal adapter capabilities.
 type AdapterRatingJSON struct {
 	MaxWatts      int `json:"max_watts"`
 	MaxVoltageMV  int `json:"max_voltage_mv"`
 	MaxAmperageMA int `json:"max_amperage_ma"`
 }
 
+// AdapterInputJSON contains live adapter input telemetry values.
 type AdapterInputJSON struct {
 	VoltageMV          int  `json:"voltage_mv"`
 	AmperageMA         int  `json:"amperage_ma"`
 	TelemetryAvailable bool `json:"telemetry_available"`
 }
 
+// PowerJSON contains computed adapter, battery, and system power values.
 type PowerJSON struct {
 	AdapterW float64 `json:"adapter_w"`
 	BatteryW float64 `json:"battery_w"`
 	SystemW  float64 `json:"system_w"`
 }
 
+// ControlsJSON contains writable control state and capability flags.
 type ControlsJSON struct {
 	SMC          ControlsSMCJSON          `json:"smc"`
 	Capabilities ControlsCapabilitiesJSON `json:"capabilities"`
 }
 
+// ControlsSMCJSON reports writable SMC state as observed by the library.
 type ControlsSMCJSON struct {
 	ChargingEnabled bool `json:"charging_enabled"`
 	AdapterEnabled  bool `json:"adapter_enabled"`
 }
 
+// ControlsCapabilitiesJSON reports what query/write capabilities are available.
 type ControlsCapabilitiesJSON struct {
 	CanQueryIOKit bool `json:"can_query_iokit"`
 	CanQuerySMC   bool `json:"can_query_smc"`
 	CanWriteSMC   bool `json:"can_write_smc"`
 }
 
+// SourcesJSON records source availability and telemetry provenance.
 type SourcesJSON struct {
 	IOKit            SourceStatusJSON           `json:"iokit"`
 	SMC              SourceStatusJSON           `json:"smc"`
 	AdapterTelemetry AdapterTelemetrySourceJSON `json:"adapter_telemetry"`
 }
 
+// SourceStatusJSON reports whether a source was queried and had data available.
 type SourceStatusJSON struct {
 	Queried   bool `json:"queried"`
 	Available bool `json:"available"`
 }
 
+// AdapterTelemetrySourceJSON describes adapter telemetry provenance decisions.
 type AdapterTelemetrySourceJSON struct {
 	Source        string `json:"source"`
 	Available     bool   `json:"available"`
@@ -151,6 +173,7 @@ type AdapterTelemetrySourceJSON struct {
 	ForceFallback bool   `json:"force_fallback"`
 }
 
+// ToJSON projects SystemInfo into the stable v1 JSON contract.
 func (s *SystemInfo) ToJSON() SystemInfoJSON {
 	if s == nil {
 		return SystemInfoJSON{SchemaVersion: jsonSchemaVersion}

@@ -27,23 +27,34 @@ type InternalEvent struct {
 // Events is the single, unified channel for all notifications from the C layer.
 var Events = make(chan InternalEvent, 2) // Buffer of 2 is safe
 
+// AdapterTelemetrySource identifies which subsystem produced adapter input telemetry.
 type AdapterTelemetrySource string
 
 const (
-	AdapterTelemetrySourceIOKit       AdapterTelemetrySource = "iokit"
+	// AdapterTelemetrySourceIOKit indicates adapter input telemetry came from IOKit.
+	AdapterTelemetrySourceIOKit AdapterTelemetrySource = "iokit"
+	// AdapterTelemetrySourceSMCFallback indicates telemetry came from SMC fallback reads.
 	AdapterTelemetrySourceSMCFallback AdapterTelemetrySource = "smc_fallback"
+	// AdapterTelemetrySourceUnavailable indicates telemetry was not available from any source.
 	AdapterTelemetrySourceUnavailable AdapterTelemetrySource = "unavailable"
 )
 
+// AdapterTelemetryReason describes why a telemetry source decision was made.
 type AdapterTelemetryReason string
 
 const (
-	AdapterTelemetryReasonNone         AdapterTelemetryReason = "none"
-	AdapterTelemetryReasonNoAdapter    AdapterTelemetryReason = "no_adapter"
+	// AdapterTelemetryReasonNone indicates no exceptional reason was needed.
+	AdapterTelemetryReasonNone AdapterTelemetryReason = "none"
+	// AdapterTelemetryReasonNoAdapter indicates no power adapter was connected.
+	AdapterTelemetryReasonNoAdapter AdapterTelemetryReason = "no_adapter"
+	// AdapterTelemetryReasonMissingIOKit indicates IOKit did not expose required telemetry.
 	AdapterTelemetryReasonMissingIOKit AdapterTelemetryReason = "missing_iokit"
+	// AdapterTelemetryReasonInvalidIOKit indicates IOKit values were present but invalid.
 	AdapterTelemetryReasonInvalidIOKit AdapterTelemetryReason = "invalid_iokit"
-	AdapterTelemetryReasonForced       AdapterTelemetryReason = "forced"
-	AdapterTelemetryReasonSMCError     AdapterTelemetryReason = "smc_error"
+	// AdapterTelemetryReasonForced indicates fallback was explicitly requested.
+	AdapterTelemetryReasonForced AdapterTelemetryReason = "forced"
+	// AdapterTelemetryReasonSMCError indicates SMC fallback failed.
+	AdapterTelemetryReasonSMCError AdapterTelemetryReason = "smc_error"
 )
 
 // RawData holds the unprocessed data returned from the IOKit C functions.

@@ -156,13 +156,18 @@ type IOKitCalculations struct {
 	SystemPower             float64             `json:"SystemPower"`
 }
 
+// BatteryBalanceState classifies per-cell voltage drift severity.
 type BatteryBalanceState string
 
 const (
-	BatteryBalanceUnknown         BatteryBalanceState = "unknown"
-	BatteryBalanceBalanced        BatteryBalanceState = "balanced"
+	// BatteryBalanceUnknown indicates there are insufficient per-cell voltages.
+	BatteryBalanceUnknown BatteryBalanceState = "unknown"
+	// BatteryBalanceBalanced indicates drift is at or below the balanced threshold.
+	BatteryBalanceBalanced BatteryBalanceState = "balanced"
+	// BatteryBalanceSlightImbalance indicates moderate drift above balanced threshold.
 	BatteryBalanceSlightImbalance BatteryBalanceState = "slight_imbalance"
-	BatteryBalanceHighImbalance   BatteryBalanceState = "high_imbalance"
+	// BatteryBalanceHighImbalance indicates drift above the high-imbalance threshold.
+	BatteryBalanceHighImbalance BatteryBalanceState = "high_imbalance"
 )
 
 // --- SMC-Specific Data Structures ---
