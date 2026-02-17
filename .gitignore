@@ -17,7 +17,7 @@
 .cache/
 
 # Compiled binaries
-/powerkit-cli
+build/
 
 # Agent related
 /repomix-output.xml
