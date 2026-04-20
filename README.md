@@ -112,13 +112,13 @@ Keep the README short. Detailed material lives elsewhere:
 - [Contract Details](docs/contracts.md)
 - [Release Process](docs/release.md)
 - [Agent Instructions](AGENTS.md)
-- [Changelog](CHANGELOG.md)
 
 ## Release Model
 
 - semver tags on `master`
 - additive API changes allowed in patch releases
 - breaking API changes require a minor or major bump
+- release notes belong in tags and Git hosting releases, not an in-repo changelog
 
 ## Safety
 

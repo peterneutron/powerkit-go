@@ -17,7 +17,7 @@ This repo uses `master` as the trunk and tagged release branch.
    make verify
    ```
 
-3. Update [CHANGELOG.md](../CHANGELOG.md) under `Unreleased`.
+3. Prepare concise release notes from the merged commits.
 4. Tag the release on `master`:
 
    ```bash
@@ -25,7 +25,8 @@ This repo uses `master` as the trunk and tagged release branch.
    ```
 
 5. Push `master` and the new tag.
-6. If downstream repos pin `powerkit-go`, bump them after the tag exists.
+6. Publish release notes on the hosting platform for that tag.
+7. If downstream repos pin `powerkit-go`, bump them after the tag exists.
 
 ## Versioning Notes
 
