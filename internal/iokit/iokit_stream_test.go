@@ -5,6 +5,39 @@ import (
 	"time"
 )
 
+func expectQueuedEventType(t *testing.T, want InternalEventType) {
+	t.Helper()
+
+	select {
+	case event := <-Events:
+		if event.Type != want {
+			t.Fatalf("expected %v event, got %v", want, event.Type)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for %v event", want)
+	}
+}
+
+func expectNoSignalWithin(t *testing.T, ch <-chan struct{}, wait time.Duration, message string) {
+	t.Helper()
+
+	select {
+	case <-ch:
+		t.Fatal(message)
+	case <-time.After(wait):
+	}
+}
+
+func expectSignalWithin(t *testing.T, ch <-chan struct{}, wait time.Duration, message string) {
+	t.Helper()
+
+	select {
+	case <-ch:
+	case <-time.After(wait):
+		t.Fatal(message)
+	}
+}
+
 func TestProcessWillSleepNotificationRunsHookBeforeAck(t *testing.T) {
 	oldEvents := Events
 	oldHook := beforeSleepHook
@@ -38,14 +71,7 @@ func TestProcessWillSleepNotificationRunsHookBeforeAck(t *testing.T) {
 		t.Fatalf("expected acknowledgement to run")
 	}
 
-	select {
-	case event := <-Events:
-		if event.Type != SystemWillSleep {
-			t.Fatalf("expected SystemWillSleep event, got %v", event.Type)
-		}
-	default:
-		t.Fatalf("expected SystemWillSleep event to be emitted")
-	}
+	expectQueuedEventType(t, SystemWillSleep)
 }
 
 func TestPushDidWakeReliableUnderQueuePressureWhileBatteryUpdatesStayLossy(t *testing.T) {
@@ -68,33 +94,8 @@ func TestPushDidWakeReliableUnderQueuePressureWhileBatteryUpdatesStayLossy(t *te
 		close(delivered)
 	}()
 
-	select {
-	case <-delivered:
-		t.Fatalf("expected wake delivery to wait for queue space instead of dropping")
-	case <-time.After(50 * time.Millisecond):
-	}
-
-	select {
-	case event := <-Events:
-		if event.Type != BatteryUpdate {
-			t.Fatalf("expected first queued event to remain BatteryUpdate, got %v", event.Type)
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("timed out draining battery update")
-	}
-
-	select {
-	case <-delivered:
-	case <-time.After(time.Second):
-		t.Fatalf("wake delivery did not complete after queue space became available")
-	}
-
-	select {
-	case event := <-Events:
-		if event.Type != SystemDidWake {
-			t.Fatalf("expected SystemDidWake event, got %v", event.Type)
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("timed out receiving wake event")
-	}
+	expectNoSignalWithin(t, delivered, 50*time.Millisecond, "expected wake delivery to wait for queue space instead of dropping")
+	expectQueuedEventType(t, BatteryUpdate)
+	expectSignalWithin(t, delivered, time.Second, "wake delivery did not complete after queue space became available")
+	expectQueuedEventType(t, SystemDidWake)
 }

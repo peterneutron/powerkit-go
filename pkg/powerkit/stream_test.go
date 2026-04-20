@@ -87,6 +87,7 @@ func TestStreamSystemEventsWithHooksRejectsConflictingRegistration(t *testing.T)
 	}
 
 	close(source)
-	for range stream {
+	for event := range stream {
+		_ = event
 	}
 }

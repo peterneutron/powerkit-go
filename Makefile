@@ -11,6 +11,10 @@ vet:
 	go vet ./...
 
 lint:
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+	  echo "error: golangci-lint not found in PATH. Install golangci-lint to run lint checks."; \
+	  exit 1; \
+	fi
 	golangci-lint run
 
-verify: tests vet
+verify: tests vet lint
