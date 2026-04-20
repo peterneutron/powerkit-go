@@ -1,16 +1,16 @@
 # Release Process
 
-This repo uses `dev` as the integration branch and `master` as the tagged release branch.
+This repo uses `master` as the trunk and tagged release branch.
 
 ## Branch Model
 
-- land feature and fix commits on `dev`
+- land feature and fix commits on `master`
 - keep `master` releasable and tag only from `master`
-- keep `dev` and `master` synchronized after releases so they do not drift by tree content
+- avoid parallel long-lived release branches unless they provide real day-to-day value
 
 ## Patch Release Checklist
 
-1. Finalize the release candidate on `dev`.
+1. Finalize the release candidate on `master`.
 2. Run verification from repo root:
 
    ```bash
@@ -18,15 +18,14 @@ This repo uses `dev` as the integration branch and `master` as the tagged releas
    ```
 
 3. Update [CHANGELOG.md](../CHANGELOG.md) under `Unreleased`.
-4. Merge `dev` into `master` without adding extra release-only code changes.
-5. Tag the release on `master`:
+4. Tag the release on `master`:
 
    ```bash
    git tag vX.Y.Z
    ```
 
-6. Push `master`, `dev`, and the new tag.
-7. If downstream repos pin `powerkit-go`, bump them after the tag exists.
+5. Push `master` and the new tag.
+6. If downstream repos pin `powerkit-go`, bump them after the tag exists.
 
 ## Versioning Notes
 
@@ -37,4 +36,4 @@ This repo uses `dev` as the integration branch and `master` as the tagged releas
 
 ## CI Expectations
 
-CI should validate both `dev` and `master`. If the documented branch model changes, update the workflows and this document together.
+CI should validate `master` and pull requests targeting `master`. If the branch model changes again, update the workflows and this document together.
