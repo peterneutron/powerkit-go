@@ -125,28 +125,75 @@ static void startNotifications() {
 */
 import "C"
 
-//export pushBatteryUpdate
-func pushBatteryUpdate() {
+import (
+	"log"
+	"sync"
+)
+
+var (
+	streamHooksMu   sync.RWMutex
+	beforeSleepHook func()
+)
+
+func setBeforeSleepHook(fn func()) {
+	streamHooksMu.Lock()
+	defer streamHooksMu.Unlock()
+	beforeSleepHook = fn
+}
+
+func runBeforeSleepHook() {
+	streamHooksMu.RLock()
+	hook := beforeSleepHook
+	streamHooksMu.RUnlock()
+	if hook == nil {
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("powerkit-go: before-sleep hook panicked: %v", r)
+		}
+	}()
+	hook()
+}
+
+func emitLossy(eventType InternalEventType) {
 	select {
-	case Events <- InternalEvent{Type: BatteryUpdate}:
+	case Events <- InternalEvent{Type: eventType}:
 	default:
 	}
+}
+
+func emitReliable(eventType InternalEventType) {
+	Events <- InternalEvent{Type: eventType}
+}
+
+func processWillSleepNotification(ack func()) {
+	runBeforeSleepHook()
+	emitReliable(SystemWillSleep)
+	if ack != nil {
+		ack()
+	}
+}
+
+// SetBeforeSleepHook installs the synchronous pre-sleep hook used by the
+// system event stream. The hook runs on the IOKit sleep callback path.
+func SetBeforeSleepHook(fn func()) {
+	setBeforeSleepHook(fn)
+}
+
+//export pushBatteryUpdate
+func pushBatteryUpdate() {
+	emitLossy(BatteryUpdate)
 }
 
 //export pushWillSleep
 func pushWillSleep() {
-	select {
-	case Events <- InternalEvent{Type: SystemWillSleep}:
-	default:
-	}
+	processWillSleepNotification(nil)
 }
 
 //export pushDidWake
 func pushDidWake() {
-	select {
-	case Events <- InternalEvent{Type: SystemDidWake}:
-	default:
-	}
+	emitReliable(SystemDidWake)
 }
 
 // StartMonitor initializes the unified IOKit notification system.

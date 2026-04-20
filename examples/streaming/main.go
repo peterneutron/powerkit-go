@@ -23,8 +23,9 @@ func main() {
 	fmt.Println("Press Ctrl+C to exit gracefully.")
 
 	// 1. Initiate the streaming process.
-	// StreamSystemInfo returns a read-only channel that will receive
-	// a *powerkit.SystemInfo object whenever IOKit posts a notification.
+	// StreamSystemEvents returns a read-only channel that will receive a
+	// SystemEvent whenever IOKit posts a notification. For synchronous
+	// pre-sleep work, use StreamSystemEventsWithHooks instead.
 	eventChan, err := powerkit.StreamSystemEvents()
 	if err != nil {
 		log.Fatalf("Fatal: Could not start powerkit stream: %v", err)

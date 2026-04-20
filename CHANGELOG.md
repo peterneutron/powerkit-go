@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Added
+- `StreamSystemEventsWithHooks(StreamHooks)` for synchronous pre-sleep coordination.
+- Regression tests for pre-sleep hook ordering and reliable wake delivery.
+
+### Changed
+- `SystemDidWake` delivery is now reliable instead of drop-on-full.
+- Sleep callback processing now runs the registered before-sleep hook before acknowledging macOS sleep.
+
 ## v0.9.0
 
 ### Added
@@ -30,8 +40,3 @@ All notable changes to this project are documented in this file.
 ### Breaking and Compatibility Notes
 - Legacy PascalCase CLI JSON shape is removed; v1 snake_case JSON is the supported contract.
 - Consumers that require the old shape should pin to a pre-v1-json release.
-
-### Release Flow
-1. Merge `dev` into `master`.
-2. Tag `v0.9.0` on `master`.
-3. Continue with `0.9.x` additive hardening patches toward `v1.0.0`.

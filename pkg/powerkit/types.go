@@ -30,6 +30,12 @@ type SystemEvent struct {
 	Info *SystemInfo `json:"Info,omitempty"` // Populated only for EventTypeBatteryUpdate
 }
 
+// StreamHooks installs synchronous callbacks on the system event stream.
+// BeforeSleep runs before macOS sleep is acknowledged in the IOKit callback.
+type StreamHooks struct {
+	BeforeSleep func()
+}
+
 // --- Configuration Structs ---
 
 // FetchOptions allows the user to specify which data sources to query.
