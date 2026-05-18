@@ -62,7 +62,7 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 			SourceAmperage:     3000,
 			Voltage:            12000,
 			Amperage:           2000,
-			Temperature:        3000,
+			Temperature:        3061,
 			CycleCount:         500,
 			DesignCapacity:     8000,
 			MaxCapacity:        7500,
@@ -144,6 +144,13 @@ func TestGetSystemInfoCalculatesPower(t *testing.T) {
 	expectedSMC := 19.8*2.5 - 12*2.0
 	if got := info.SMC.Calculations.SystemPower; got != expectedSMC {
 		t.Fatalf("unexpected SMC system power: %.2f", got)
+	}
+}
+
+func TestGetSystemInfoConvertsSmartBatteryTemperature(t *testing.T) {
+	info, _ := setupSystemInfoFixture(t)
+	if got := info.IOKit.Battery.Temperature; got != 32.95 {
+		t.Fatalf("expected IOKit battery temperature 32.95, got %.2f", got)
 	}
 }
 

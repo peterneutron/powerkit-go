@@ -81,7 +81,7 @@ func newIOKitData(raw *iokit.RawData) *IOKitData {
 			TimeToFull:             raw.TimeToFull,
 			CurrentCharge:          raw.CurrentCharge,
 			CurrentChargeRaw:       raw.CurrentChargeRaw,
-			Temperature:            truncate(float64(raw.Temperature) / 100.0),
+			Temperature:            smartBatteryTemperatureCelsius(raw.Temperature),
 			Voltage:                truncate(float64(raw.Voltage) / 1000.0),
 			Amperage:               truncate(float64(raw.Amperage) / 1000.0),
 			IndividualCellVoltages: raw.CellVoltages,
@@ -96,4 +96,8 @@ func newIOKitData(raw *iokit.RawData) *IOKitData {
 			TelemetryAvailable: raw.TelemetryAvailable,
 		},
 	}
+}
+
+func smartBatteryTemperatureCelsius(rawTemperature int) float64 {
+	return truncate(float64(rawTemperature)/10.0 - 273.15)
 }
