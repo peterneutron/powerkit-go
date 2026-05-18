@@ -15,10 +15,12 @@ var (
 	ErrNotSupported = errors.New("not supported")
 	// ErrTransientIO indicates a temporary operating-system I/O failure.
 	ErrTransientIO = errors.New("transient io failure")
+
+	geteuidFn = os.Geteuid
 )
 
 func requireRoot(op string) error {
-	if os.Geteuid() == 0 {
+	if geteuidFn() == 0 {
 		return nil
 	}
 	return fmt.Errorf("%w: %s requires root", ErrPermissionRequired, op)

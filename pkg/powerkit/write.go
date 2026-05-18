@@ -73,9 +73,9 @@ func SetAdapterState(action AdapterAction) error {
 	// Internal helper without side effects.
 	setAdapter := func(enable bool) error {
 		if enable {
-			return smc.WriteData(key, currentSMCConfig.AdapterEnableBytes)
+			return writeSMCData(key, currentSMCConfig.AdapterEnableBytes)
 		}
-		return smc.WriteData(key, currentSMCConfig.AdapterDisableBytes)
+		return writeSMCData(key, currentSMCConfig.AdapterDisableBytes)
 	}
 
 	switch action {
@@ -150,7 +150,7 @@ func SetMagsafeLEDState(state MagsafeLEDState) error {
 	if err := requireRoot("set magsafe LED state"); err != nil {
 		return err
 	}
-	return smc.WriteData(smc.KeyMagsafeLED, []byte{byte(state)})
+	return writeSMCData(smc.KeyMagsafeLED, []byte{byte(state)})
 }
 
 // MagsafeStatus reports MagSafe LED capability and current state.

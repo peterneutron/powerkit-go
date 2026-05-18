@@ -17,6 +17,7 @@ var (
 	fetchIOKitData    = iokit.FetchData
 	fetchSMCFloatData = smc.FetchData
 	fetchSMCRawData   = smc.FetchRawData
+	writeSMCData      = smc.WriteData
 )
 
 // truncate rounds a float down to two decimal places. This is used
@@ -55,13 +56,13 @@ func setCharging(enable bool) error {
 
 	if currentSMCConfig.IsLegacyCharging {
 		for _, key := range currentSMCConfig.ChargingKeysLegacy {
-			if err := smc.WriteData(key, bytesToWrite); err != nil {
+			if err := writeSMCData(key, bytesToWrite); err != nil {
 				return fmt.Errorf("failed to write to legacy charging key '%s': %w", key, err)
 			}
 		}
 		return nil
 	}
-	return smc.WriteData(currentSMCConfig.ChargingKeyModern, bytesToWrite)
+	return writeSMCData(currentSMCConfig.ChargingKeyModern, bytesToWrite)
 }
 
 // Create a helper for fetching IOKit data

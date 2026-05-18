@@ -7,7 +7,6 @@ import (
 
 	sysos "github.com/peterneutron/powerkit-go/internal/os"
 	"github.com/peterneutron/powerkit-go/internal/powerd"
-	"github.com/peterneutron/powerkit-go/internal/smc"
 )
 
 var (
@@ -82,7 +81,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 // interpreting the bytes in the 'Data' field based on the 'DataType'.
 func GetRawSMCValues(keys []string) (map[string]RawSMCValue, error) {
 	// Call the new raw fetcher in our internal smc package
-	rawResults, err := smc.FetchRawData(keys)
+	rawResults, err := fetchSMCRawData(keys)
 	if err != nil {
 		return nil, err
 	}
