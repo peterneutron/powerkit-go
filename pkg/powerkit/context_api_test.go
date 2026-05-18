@@ -39,3 +39,22 @@ func TestRequireRootErrorType(t *testing.T) {
 		t.Fatalf("expected ErrPermissionRequired, got: %v", err)
 	}
 }
+
+func TestSMCWriteRequiresDetectedControlProfile(t *testing.T) {
+	oldFirmwareInfo := currentFirmwareInfo
+	t.Cleanup(func() {
+		currentFirmwareInfo = oldFirmwareInfo
+	})
+
+	currentFirmwareInfo.Major = 0
+
+	for name, err := range map[string]error{
+		"adapter":  SetAdapterState(AdapterActionOn),
+		"charging": SetChargingState(ChargingActionOn),
+		"magsafe":  SetMagsafeLEDState(LEDSystem),
+	} {
+		if !errors.Is(err, ErrNotSupported) {
+			t.Fatalf("%s write expected ErrNotSupported, got %v", name, err)
+		}
+	}
+}

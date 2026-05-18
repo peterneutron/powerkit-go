@@ -61,6 +61,9 @@ const (
 // SetAdapterState sets the desired adapter state (On, Off, or Toggle).
 // This function requires root privileges.
 func SetAdapterState(action AdapterAction) error {
+	if err := requireDetectedSMCControlProfile("set adapter state"); err != nil {
+		return err
+	}
 	if err := requireRoot("set adapter state"); err != nil {
 		return err
 	}
@@ -99,6 +102,9 @@ func SetAdapterState(action AdapterAction) error {
 // SetChargingState sets the desired charging state (On, Off, or Toggle).
 // This function requires root privileges.
 func SetChargingState(action ChargingAction) error {
+	if err := requireDetectedSMCControlProfile("set charging state"); err != nil {
+		return err
+	}
 	if err := requireRoot("set charging state"); err != nil {
 		return err
 	}
@@ -138,6 +144,9 @@ func SetChargingState(action ChargingAction) error {
 // SetMagsafeLEDState writes the single-byte LED state to the SMC.
 // This uses the common 1-byte ACLC format.
 func SetMagsafeLEDState(state MagsafeLEDState) error {
+	if err := requireDetectedSMCControlProfile("set magsafe LED state"); err != nil {
+		return err
+	}
 	if err := requireRoot("set magsafe LED state"); err != nil {
 		return err
 	}

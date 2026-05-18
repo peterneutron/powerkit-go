@@ -3,6 +3,8 @@
 package powerkit
 
 import (
+	"fmt"
+
 	"github.com/peterneutron/powerkit-go/internal/os"
 	"github.com/peterneutron/powerkit-go/internal/smc"
 )
@@ -114,4 +116,11 @@ func firmwareCompatStatus(major int) string {
 	default:
 		return firmwareCompatUnknown
 	}
+}
+
+func requireDetectedSMCControlProfile(op string) error {
+	if currentFirmwareInfo.Major != 0 {
+		return nil
+	}
+	return fmt.Errorf("%w: %s requires a detected SMC control profile", ErrNotSupported, op)
 }
