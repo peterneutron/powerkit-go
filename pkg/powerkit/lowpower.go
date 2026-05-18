@@ -18,7 +18,7 @@ func SetLowPowerMode(enable bool) error {
 	if err := requireRoot("set low power mode"); err != nil {
 		return err
 	}
-	return sysos.SetLowPowerMode(enable)
+	return sysos.SetLowPowerModeContext(nil, enable)
 }
 
 // ToggleLowPowerMode toggles the current Low Power Mode setting.
@@ -26,5 +26,5 @@ func ToggleLowPowerMode() error {
 	if err := requireRoot("toggle low power mode"); err != nil {
 		return err
 	}
-	return sysos.ToggleLowPowerMode()
+	return sysos.ToggleLowPowerModeContext(nil)
 }

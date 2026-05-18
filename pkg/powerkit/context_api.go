@@ -2,7 +2,11 @@
 
 package powerkit
 
-import "context"
+import (
+	"context"
+
+	sysos "github.com/peterneutron/powerkit-go/internal/os"
+)
 
 func checkContext(ctx context.Context) error {
 	if ctx == nil {
@@ -16,7 +20,9 @@ func checkContext(ctx context.Context) error {
 	}
 }
 
-// GetSystemInfoContext is the context-aware variant of GetSystemInfo.
+// GetSystemInfoContext is the context-aware variant of GetSystemInfo. The
+// context is checked before and after the underlying IOKit/SMC calls; those
+// cgo calls are not interrupted once started.
 func GetSystemInfoContext(ctx context.Context, opts ...FetchOptions) (*SystemInfo, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
@@ -32,6 +38,7 @@ func GetSystemInfoContext(ctx context.Context, opts ...FetchOptions) (*SystemInf
 }
 
 // SetAdapterStateContext is the context-aware variant of SetAdapterState.
+// Context cancellation is checked before the SMC write path starts.
 func SetAdapterStateContext(ctx context.Context, action AdapterAction) error {
 	if err := checkContext(ctx); err != nil {
 		return err
@@ -40,6 +47,7 @@ func SetAdapterStateContext(ctx context.Context, action AdapterAction) error {
 }
 
 // SetChargingStateContext is the context-aware variant of SetChargingState.
+// Context cancellation is checked before the SMC write path starts.
 func SetChargingStateContext(ctx context.Context, action ChargingAction) error {
 	if err := checkContext(ctx); err != nil {
 		return err
@@ -48,6 +56,7 @@ func SetChargingStateContext(ctx context.Context, action ChargingAction) error {
 }
 
 // SetMagsafeLEDStateContext is the context-aware variant of SetMagsafeLEDState.
+// Context cancellation is checked before the SMC write path starts.
 func SetMagsafeLEDStateContext(ctx context.Context, state MagsafeLEDState) error {
 	if err := checkContext(ctx); err != nil {
 		return err
@@ -60,7 +69,10 @@ func SetLowPowerModeContext(ctx context.Context, enable bool) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	return SetLowPowerMode(enable)
+	if err := requireRoot("set low power mode"); err != nil {
+		return err
+	}
+	return sysos.SetLowPowerModeContext(ctx, enable)
 }
 
 // ToggleLowPowerModeContext is the context-aware variant of ToggleLowPowerMode.
@@ -68,5 +80,8 @@ func ToggleLowPowerModeContext(ctx context.Context) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
-	return ToggleLowPowerMode()
+	if err := requireRoot("toggle low power mode"); err != nil {
+		return err
+	}
+	return sysos.ToggleLowPowerModeContext(ctx)
 }

@@ -91,6 +91,7 @@ Use `StreamSystemEventsContext` when the caller needs to cancel the stream and r
 - Read telemetry: no root required
 - Sleep assertions: no root required
 - Charging, adapter, MagSafe, and Low Power Mode writes: root required
+- SMC-backed context APIs check cancellation before starting hardware calls; Low Power Mode context APIs cancel the underlying `pmset` process.
 
 ## Build
 

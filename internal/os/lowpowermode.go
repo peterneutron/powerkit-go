@@ -4,6 +4,7 @@
 package os
 
 import (
+	"context"
 	"errors"
 	"os/exec"
 	"strings"
@@ -16,8 +17,8 @@ var (
 		cmd := exec.Command("/usr/bin/pmset", args...)
 		return cmd.Output()
 	}
-	pmsetExecFn = func(args ...string) error {
-		cmd := exec.Command("/usr/bin/pmset", args...)
+	pmsetExecContextFn = func(ctx context.Context, args ...string) error {
+		cmd := exec.CommandContext(ctx, "/usr/bin/pmset", args...)
 		return cmd.Run()
 	}
 )
@@ -80,6 +81,19 @@ func GetLowPowerModeEnabled() (enabled bool, available bool, err error) {
 // SetLowPowerMode sets Low Power Mode using pmset.
 // Requires root privileges.
 func SetLowPowerMode(enable bool) error {
+	return SetLowPowerModeContext(context.Background(), enable)
+}
+
+// SetLowPowerModeContext sets Low Power Mode using pmset.
+// Requires root privileges.
+func SetLowPowerModeContext(ctx context.Context, enable bool) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	target := "0"
 	if enable {
 		target = "1"
@@ -90,7 +104,7 @@ func SetLowPowerMode(enable bool) error {
 	//   source := "-a" // or "-b" / "-c" in the future when API supports per-source control
 	//   cmd := exec.Command("/usr/bin/pmset", source, "lowpowermode", target)
 	// For now, keep -a to avoid dead code and ensure consistent behavior.
-	if err := pmsetExecFn("-a", "lowpowermode", target); err != nil {
+	if err := pmsetExecContextFn(ctx, "-a", "lowpowermode", target); err != nil {
 		return err
 	}
 
@@ -103,6 +117,18 @@ func SetLowPowerMode(enable bool) error {
 
 // ToggleLowPowerMode toggles the current LPM state.
 func ToggleLowPowerMode() error {
+	return ToggleLowPowerModeContext(context.Background())
+}
+
+// ToggleLowPowerModeContext toggles the current LPM state.
+func ToggleLowPowerModeContext(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	enabled, available, err := GetLowPowerModeEnabled()
 	if err != nil {
 		return err
@@ -110,5 +136,5 @@ func ToggleLowPowerMode() error {
 	if !available {
 		return errors.New("low power mode not available on this system")
 	}
-	return SetLowPowerMode(!enabled)
+	return SetLowPowerModeContext(ctx, !enabled)
 }

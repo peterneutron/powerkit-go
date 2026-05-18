@@ -35,6 +35,10 @@ Context-aware variants exist for mutating APIs:
 - `SetLowPowerModeContext`
 - `ToggleLowPowerModeContext`
 
+SMC-backed context variants check cancellation before starting the SMC read/write
+path; the underlying cgo calls are not interruptible once started. Low Power Mode
+context variants pass cancellation to the underlying `pmset` process.
+
 ### Sleep Assertions
 
 - `CreateAssertion(AssertionType, reason string) (AssertionID, error)`

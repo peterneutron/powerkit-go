@@ -1,6 +1,8 @@
 package os
 
 import (
+	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -129,5 +131,27 @@ func TestLowPowerModeCacheExpires(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&runCalls); got != 2 {
 		t.Fatalf("expected pmset to run twice, got %d", got)
+	}
+}
+
+func TestSetLowPowerModeContextCanceledBeforePmset(t *testing.T) {
+	oldExecContext := pmsetExecContextFn
+	t.Cleanup(func() { pmsetExecContextFn = oldExecContext })
+
+	var calls int32
+	pmsetExecContextFn = func(context.Context, ...string) error {
+		atomic.AddInt32(&calls, 1)
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := SetLowPowerModeContext(ctx, true)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+	if got := atomic.LoadInt32(&calls); got != 0 {
+		t.Fatalf("expected canceled context to skip pmset, got %d calls", got)
 	}
 }
