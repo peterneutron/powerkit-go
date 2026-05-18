@@ -70,14 +70,29 @@ Control APIs:
 - `SetAdapterState(AdapterAction) error`
 - `SetMagsafeLEDState(MagsafeLEDState) error`
 - `GetMagsafeLEDState() (state MagsafeLEDState, available bool, err error)`
+- `GetMagsafeStatus() (MagsafeStatus, error)`
+- `IsMagsafeCharging() (bool, error)`
+- `IsMagsafeAvailable() bool`
 - `GetLowPowerModeEnabled() (enabled bool, available bool, err error)`
 - `SetLowPowerMode(enable bool) error`
+- `ToggleLowPowerMode() error`
+
+Context-aware variants are available for system info and mutating control APIs:
+
+- `GetSystemInfoContext(ctx context.Context, opts ...FetchOptions) (*SystemInfo, error)`
+- `SetAdapterStateContext(ctx context.Context, action AdapterAction) error`
+- `SetChargingStateContext(ctx context.Context, action ChargingAction) error`
+- `SetMagsafeLEDStateContext(ctx context.Context, state MagsafeLEDState) error`
+- `SetLowPowerModeContext(ctx context.Context, enable bool) error`
+- `ToggleLowPowerModeContext(ctx context.Context) error`
 
 Sleep assertions:
 
 - `CreateAssertion(AssertionType, reason string) (AssertionID, error)`
 - `ReleaseAssertion(AssertionType)`
 - `AllowAllSleep()`
+- `IsAssertionActive(AssertionType) bool`
+- `GetAssertionID(AssertionType) (AssertionID, bool)`
 
 ## Event Stream Notes
 
@@ -91,7 +106,7 @@ Use `StreamSystemEventsContext` when the caller needs to cancel the stream and r
 - Read telemetry: no root required
 - Sleep assertions: no root required
 - Charging, adapter, MagSafe, and Low Power Mode writes: root required
-- SMC-backed context APIs check cancellation before starting hardware calls; Low Power Mode reads use Foundation, while writes cancel the underlying `pmset` process.
+- SMC-backed context APIs check cancellation before starting hardware calls; Low Power Mode reads use Foundation, while writes use `pmset` and pass through context cancellation.
 
 ## Build
 
@@ -126,7 +141,6 @@ Keep the README short. Detailed material lives elsewhere:
 
 - [Contract Details](docs/contracts.md)
 - [Release Process](docs/release.md)
-- [Agent Instructions](AGENTS.md)
 
 ## Release Model
 
@@ -137,4 +151,4 @@ Keep the README short. Detailed material lives elsewhere:
 
 ## Safety
 
-This library can change charging and adapter behavior at the hardware-control layer. Prefer read APIs unless you explicitly need mutation.
+This library can change charging, adapter, MagSafe LED, and Low Power Mode behavior at the hardware-control layer. Prefer read APIs unless you explicitly need mutation.
