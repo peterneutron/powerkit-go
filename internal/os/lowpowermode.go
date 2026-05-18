@@ -5,7 +5,7 @@ package os
 
 /*
 #cgo CFLAGS: -x objective-c -fobjc-arc
-#cgo LDFLAGS: -framework Foundation -lobjc
+#cgo LDFLAGS: -framework Foundation
 #import <Foundation/Foundation.h>
 
 int get_low_power_mode_enabled(int* available, int* enabled) {
