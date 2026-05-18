@@ -191,6 +191,7 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"unsafe"
 )
@@ -236,6 +237,16 @@ type RawSMCValue struct {
 	Data     []byte
 }
 
+func validateSMCKey(key string) error {
+	if len(key) != 4 {
+		return fmt.Errorf("SMC key %q must be exactly 4 bytes", key)
+	}
+	if strings.ContainsRune(key, '\x00') {
+		return fmt.Errorf("SMC key %q must not contain NUL bytes", key)
+	}
+	return nil
+}
+
 // FetchData retrieves a map of SMC keys and their decoded float values.
 // It works by first fetching the raw data and then decoding it.
 func FetchData(keys []string) (map[string]float64, error) {
@@ -279,6 +290,10 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 
 	results := make(map[string]RawSMCValue, len(keys))
 	for _, key := range keys {
+		if err := validateSMCKey(key); err != nil {
+			return nil, err
+		}
+
 		ckey := C.CString(key)
 
 		var dataTypeResult [5]C.char
@@ -314,6 +329,13 @@ func FetchRawData(keys []string) (map[string]RawSMCValue, error) {
 
 // WriteData writes raw bytes to a given SMC key.
 func WriteData(key string, data []byte) error {
+	if err := validateSMCKey(key); err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		return fmt.Errorf("cannot write empty data slice")
+	}
+
 	// This function opens its own connection to ensure write operations
 	// are atomic and don't interfere with concurrent reads on the shared connection.
 	var conn C.io_connect_t
@@ -326,9 +348,6 @@ func WriteData(key string, data []byte) error {
 	ckey := C.CString(key)
 	defer C.free(unsafe.Pointer(ckey))
 
-	if len(data) == 0 {
-		return fmt.Errorf("cannot write empty data slice")
-	}
 	cBytes := (*C.uchar)(unsafe.Pointer(&data[0]))
 	cDataSize := C.UInt32(len(data))
 
