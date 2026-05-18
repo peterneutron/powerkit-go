@@ -17,13 +17,13 @@ func resetLPMCache() {
 }
 
 func TestGetLowPowerModeEnabledParsing(t *testing.T) {
-	oldRun := pmsetRunFn
-	t.Cleanup(func() { pmsetRunFn = oldRun })
+	oldRead := lowPowerModeReadFn
+	t.Cleanup(func() { lowPowerModeReadFn = oldRead })
 
 	resetLPMCache()
 
-	pmsetRunFn = func(_ ...string) ([]byte, error) {
-		return []byte("Battery Status\n lowpowermode = 1\n"), nil
+	lowPowerModeReadFn = func() (bool, bool, error) {
+		return true, true, nil
 	}
 
 	enabled, available, err := GetLowPowerModeEnabled()
@@ -35,8 +35,8 @@ func TestGetLowPowerModeEnabledParsing(t *testing.T) {
 	}
 
 	resetLPMCache()
-	pmsetRunFn = func(_ ...string) ([]byte, error) {
-		return []byte("some other key\n"), nil
+	lowPowerModeReadFn = func() (bool, bool, error) {
+		return false, false, nil
 	}
 
 	enabled, available, err = GetLowPowerModeEnabled()
@@ -49,19 +49,19 @@ func TestGetLowPowerModeEnabledParsing(t *testing.T) {
 }
 
 func TestLowPowerModeCacheUsesCachedValue(t *testing.T) {
-	oldRun := pmsetRunFn
+	oldRead := lowPowerModeReadFn
 	origTTL := lpmTTL
 	t.Cleanup(func() {
-		pmsetRunFn = oldRun
+		lowPowerModeReadFn = oldRead
 		lpmTTL = origTTL
 	})
 
 	resetLPMCache()
 
 	var runCalls int32
-	pmsetRunFn = func(_ ...string) ([]byte, error) {
+	lowPowerModeReadFn = func() (bool, bool, error) {
 		atomic.AddInt32(&runCalls, 1)
-		return []byte(" lowpowermode\t0\n"), nil
+		return false, true, nil
 	}
 
 	lpmTTL = time.Minute
@@ -90,22 +90,22 @@ func TestLowPowerModeCacheUsesCachedValue(t *testing.T) {
 }
 
 func TestLowPowerModeCacheExpires(t *testing.T) {
-	oldRun := pmsetRunFn
+	oldRead := lowPowerModeReadFn
 	origTTL := lpmTTL
 	t.Cleanup(func() {
-		pmsetRunFn = oldRun
+		lowPowerModeReadFn = oldRead
 		lpmTTL = origTTL
 	})
 
 	resetLPMCache()
 
 	var runCalls int32
-	pmsetRunFn = func(_ ...string) ([]byte, error) {
+	lowPowerModeReadFn = func() (bool, bool, error) {
 		call := atomic.AddInt32(&runCalls, 1)
 		if call == 1 {
-			return []byte(" lowpowermode\t0\n"), nil
+			return false, true, nil
 		}
-		return []byte(" lowpowermode\t1\n"), nil
+		return true, true, nil
 	}
 
 	lpmTTL = time.Millisecond

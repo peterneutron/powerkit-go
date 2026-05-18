@@ -3,19 +3,46 @@
 // Package os provides internal OS helpers such as Low Power Mode control.
 package os
 
+/*
+#cgo CFLAGS: -x objective-c -fobjc-arc
+#cgo LDFLAGS: -framework Foundation -lobjc
+#import <Foundation/Foundation.h>
+
+int get_low_power_mode_enabled(int* available, int* enabled) {
+    if (!available || !enabled) {
+        return 1;
+    }
+
+    NSProcessInfo* processInfo = [NSProcessInfo processInfo];
+    if (![processInfo respondsToSelector:@selector(isLowPowerModeEnabled)]) {
+        *available = 0;
+        *enabled = 0;
+        return 0;
+    }
+
+    *available = 1;
+    *enabled = [processInfo isLowPowerModeEnabled] ? 1 : 0;
+    return 0;
+}
+*/
+import "C"
+
 import (
 	"context"
 	"errors"
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 )
 
 var (
-	pmsetRunFn = func(args ...string) ([]byte, error) {
-		cmd := exec.Command("/usr/bin/pmset", args...)
-		return cmd.Output()
+	lowPowerModeReadFn = func() (enabled bool, available bool, err error) {
+		var cAvailable C.int
+		var cEnabled C.int
+		if rc := C.get_low_power_mode_enabled(&cAvailable, &cEnabled); rc != 0 {
+			return false, false, errors.New("failed to read low power mode state")
+		}
+		return cEnabled != 0, cAvailable != 0, nil
 	}
 	pmsetExecContextFn = func(ctx context.Context, args ...string) error {
 		cmd := exec.CommandContext(ctx, "/usr/bin/pmset", args...)
@@ -23,7 +50,7 @@ var (
 	}
 )
 
-// cached state for low power mode reads to avoid frequent process spawns
+// cached state for low power mode reads
 var (
 	lpmMu       sync.Mutex
 	lpmCachedAt time.Time
@@ -32,8 +59,8 @@ var (
 	lpmValid    bool
 )
 
-// GetLowPowerModeEnabled returns whether Low Power Mode is enabled.
-// available=false indicates the system does not report the key (older macOS) or output could not be parsed.
+// GetLowPowerModeEnabled returns whether Low Power Mode is enabled. available=false
+// indicates the system does not expose the Foundation low power mode property.
 func GetLowPowerModeEnabled() (enabled bool, available bool, err error) {
 	// Quick cache path
 	lpmMu.Lock()
@@ -44,29 +71,13 @@ func GetLowPowerModeEnabled() (enabled bool, available bool, err error) {
 	}
 	lpmMu.Unlock()
 
-	out, runErr := pmsetRunFn("-g")
-	if runErr != nil {
-		// Do not update cache on failure to allow quick retry next tick
-		return false, false, runErr
+	enabled, available, err = lowPowerModeReadFn()
+	if err != nil {
+		// Do not update cache on failure to allow quick retry next tick.
+		return false, false, err
 	}
 
-	enabled = false
-	available = false
-	for _, line := range strings.Split(strings.ToLower(string(out)), "\n") {
-		s := strings.TrimSpace(line)
-		if strings.HasPrefix(s, "lowpowermode") {
-			available = true
-			// Example formats:
-			//  lowpowermode         1
-			//  lowpowermode = 1
-			if strings.Contains(s, " 1") || strings.HasSuffix(s, "1") || strings.Contains(s, "= 1") {
-				enabled = true
-			}
-			break
-		}
-	}
-
-	// Update cache only when available and parsed
+	// Update cache only when the OS exposes the value.
 	if available {
 		lpmMu.Lock()
 		lpmValue = enabled
