@@ -108,6 +108,18 @@ make lint
 make verify
 ```
 
+Hardware-backed integration tests are opt-in:
+
+```bash
+make integration-tests
+```
+
+Mutating integration tests are skipped unless explicitly enabled and run with privileges:
+
+```bash
+sudo POWERKIT_WRITE_INTEGRATION=1 go test -tags powerkit_integration ./pkg/powerkit
+```
+
 ## Docs
 
 Keep the README short. Detailed material lives elsewhere:

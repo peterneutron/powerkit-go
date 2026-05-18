@@ -1,4 +1,4 @@
-.PHONY: build tests vet lint verify
+.PHONY: build tests integration-tests vet lint verify
 
 build:
 	mkdir -p build
@@ -6,6 +6,9 @@ build:
 
 tests:
 	go test ./...
+
+integration-tests:
+	go test -tags powerkit_integration ./...
 
 vet:
 	go vet ./...
