@@ -53,62 +53,81 @@ func StreamSystemEventsContext(ctx context.Context, hooks StreamHooks) (<-chan S
 		return nil, err
 	}
 
-	streamMu.Lock()
-	defer streamMu.Unlock()
-
-	if streamActive {
-		if !sameStreamHooks(activeStreamHooks, hooks) {
-			return nil, errConflictingStreamHooks
-		}
-		return nil, errSystemEventStreamActive
+	if err := registerSystemEventStream(hooks); err != nil {
+		return nil, err
 	}
 
-	setBeforeSleepHookFn(hooks.BeforeSleep)
-	streamActive = true
-	activeStreamHooks = hooks
-
 	systemEventChan := make(chan SystemEvent, 16)
-	go func(source <-chan iokit.InternalEvent) {
-		defer close(systemEventChan)
-		defer releaseStreamRegistration()
-
-		for {
-			var internalEvent iokit.InternalEvent
-			select {
-			case <-ctx.Done():
-				return
-			case event, ok := <-source:
-				if !ok {
-					return
-				}
-				internalEvent = event
-			}
-
-			publicEvent, ok := translateInternalEvent(internalEvent)
-			if !ok {
-				continue
-			}
-
-			if publicEvent.Type == EventTypeBatteryUpdate {
-				select {
-				case systemEventChan <- publicEvent:
-				default:
-				}
-				continue
-			}
-
-			select {
-			case systemEventChan <- publicEvent:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}(internalEventSource())
+	go pumpSystemEvents(ctx, internalEventSource(), systemEventChan)
 
 	startMonitorFn()
 	enqueueInitialBatteryUpdate()
 
 	return systemEventChan, nil
+}
+
+func pumpSystemEvents(ctx context.Context, source <-chan iokit.InternalEvent, output chan<- SystemEvent) {
+	defer close(output)
+	defer releaseStreamRegistration()
+
+	for {
+		internalEvent, ok := receiveInternalEvent(ctx, source)
+		if !ok {
+			return
+		}
+
+		publicEvent, ok := translateInternalEvent(internalEvent)
+		if !ok {
+			continue
+		}
+
+		if !sendSystemEvent(ctx, output, publicEvent) {
+			return
+		}
+	}
+}
+
+func receiveInternalEvent(ctx context.Context, source <-chan iokit.InternalEvent) (iokit.InternalEvent, bool) {
+	select {
+	case <-ctx.Done():
+		return iokit.InternalEvent{}, false
+	case event, ok := <-source:
+		return event, ok
+	}
+}
+
+func sendSystemEvent(ctx context.Context, output chan<- SystemEvent, event SystemEvent) bool {
+	if event.Type == EventTypeBatteryUpdate {
+		select {
+		case output <- event:
+		default:
+		}
+		return true
+	}
+
+	select {
+	case output <- event:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func registerSystemEventStream(hooks StreamHooks) error {
+	streamMu.Lock()
+	defer streamMu.Unlock()
+
+	if streamActive {
+		if !sameStreamHooks(activeStreamHooks, hooks) {
+			return errConflictingStreamHooks
+		}
+		return errSystemEventStreamActive
+	}
+
+	setBeforeSleepHookFn(hooks.BeforeSleep)
+	streamActive = true
+	activeStreamHooks = hooks
+	return nil
 }
 
 func releaseStreamRegistration() {

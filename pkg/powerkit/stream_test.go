@@ -134,7 +134,8 @@ func TestStreamSystemEventsContextCancelReleasesRegistration(t *testing.T) {
 		t.Fatalf("expected registration after cancellation to succeed: %v", err)
 	}
 	close(source)
-	for range next {
+	for event := range next {
+		_ = event
 	}
 }
 

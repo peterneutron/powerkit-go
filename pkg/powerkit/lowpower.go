@@ -3,6 +3,8 @@
 package powerkit
 
 import (
+	"context"
+
 	sysos "github.com/peterneutron/powerkit-go/internal/os"
 )
 
@@ -18,7 +20,7 @@ func SetLowPowerMode(enable bool) error {
 	if err := requireRoot("set low power mode"); err != nil {
 		return err
 	}
-	return sysos.SetLowPowerModeContext(nil, enable)
+	return sysos.SetLowPowerModeContext(context.Background(), enable)
 }
 
 // ToggleLowPowerMode toggles the current Low Power Mode setting.
@@ -26,5 +28,5 @@ func ToggleLowPowerMode() error {
 	if err := requireRoot("toggle low power mode"); err != nil {
 		return err
 	}
-	return sysos.ToggleLowPowerModeContext(nil)
+	return sysos.ToggleLowPowerModeContext(context.Background())
 }
