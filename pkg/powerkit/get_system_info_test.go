@@ -154,6 +154,12 @@ func TestGetSystemInfoConvertsSmartBatteryTemperature(t *testing.T) {
 	}
 }
 
+func TestSmartBatteryTemperatureCelsiusTreatsMissingRawValueAsUnavailable(t *testing.T) {
+	if got := smartBatteryTemperatureCelsius(0); got != 0 {
+		t.Fatalf("expected missing IOKit battery temperature to convert to 0, got %.2f", got)
+	}
+}
+
 func TestGetSystemInfoOSFallbackBehavior(t *testing.T) {
 	info, _ := setupSystemInfoFixture(t)
 	if !info.OS.LowPowerMode.Enabled || !info.OS.LowPowerMode.Available {

@@ -99,5 +99,8 @@ func newIOKitData(raw *iokit.RawData) *IOKitData {
 }
 
 func smartBatteryTemperatureCelsius(rawTemperature int) float64 {
+	if rawTemperature <= 0 {
+		return 0
+	}
 	return truncate(float64(rawTemperature)/10.0 - 273.15)
 }
