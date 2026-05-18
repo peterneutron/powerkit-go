@@ -44,19 +44,31 @@ func doLowPowerGet() {
 
 func doLowPowerSet(val string) {
 	checkRoot()
-	switch val {
-	case actionOn:
+	enable, ok := parseLowPowerSetArg(val)
+	if !ok {
+		log.Fatalf("Error: invalid argument '%s'. Use 'on' or 'off'.", val)
+	}
+	if enable {
 		if err := powerkit.SetLowPowerMode(true); err != nil {
 			log.Fatalf("Error enabling Low Power Mode: %v", err)
 		}
 		fmt.Println("Low Power Mode enabled.")
+		return
+	}
+	if err := powerkit.SetLowPowerMode(false); err != nil {
+		log.Fatalf("Error disabling Low Power Mode: %v", err)
+	}
+	fmt.Println("Low Power Mode disabled.")
+}
+
+func parseLowPowerSetArg(val string) (bool, bool) {
+	switch val {
+	case actionOn:
+		return true, true
 	case actionOff:
-		if err := powerkit.SetLowPowerMode(false); err != nil {
-			log.Fatalf("Error disabling Low Power Mode: %v", err)
-		}
-		fmt.Println("Low Power Mode disabled.")
+		return false, true
 	default:
-		log.Fatalf("Error: invalid argument '%s'. Use 'on' or 'off'.", val)
+		return false, false
 	}
 }
 
