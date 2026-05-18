@@ -94,6 +94,13 @@ Top-level keys:
     }
   },
   "battery": {
+    "capacity": {
+      "current_percent": 67,
+      "current_raw": 65,
+      "hardware_percent": 65,
+      "hardware_percent_precise": 64.09,
+      "hardware_percent_available": true
+    },
     "health": {
       "voltage_drift_mv": 18,
       "balance_state": "slight_imbalance"
@@ -114,6 +121,13 @@ Top-level keys:
   }
 }
 ```
+
+`battery.capacity.current_percent` is the macOS-facing displayed battery
+percentage. `battery.capacity.current_raw` is the legacy raw smart-battery
+`BatteryData.StateOfCharge` percentage. New consumers should prefer
+`hardware_percent` / `hardware_percent_precise` when they need the battery
+management system percentage; `hardware_percent_available` indicates whether
+the raw smart-battery inputs were present.
 
 ## Firmware Profile Model
 

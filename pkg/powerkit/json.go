@@ -74,11 +74,14 @@ type BatteryIdentityJSON struct {
 
 // BatteryCapacityJSON exposes key battery capacity measurements.
 type BatteryCapacityJSON struct {
-	CurrentPercent int `json:"current_percent"`
-	CurrentRaw     int `json:"current_raw"`
-	Design         int `json:"design"`
-	Max            int `json:"max"`
-	Nominal        int `json:"nominal"`
+	CurrentPercent           int     `json:"current_percent"`
+	CurrentRaw               int     `json:"current_raw"`
+	HardwarePercent          int     `json:"hardware_percent"`
+	HardwarePercentPrecise   float64 `json:"hardware_percent_precise"`
+	HardwarePercentAvailable bool    `json:"hardware_percent_available"`
+	Design                   int     `json:"design"`
+	Max                      int     `json:"max"`
+	Nominal                  int     `json:"nominal"`
 }
 
 // BatteryHealthJSON exposes normalized battery health indicators.
@@ -237,6 +240,9 @@ func (s *SystemInfo) ToJSON() SystemInfoJSON {
 		out.Battery.Identity.DeviceName = s.IOKit.Battery.DeviceName
 		out.Battery.Capacity.CurrentPercent = s.IOKit.Battery.CurrentCharge
 		out.Battery.Capacity.CurrentRaw = s.IOKit.Battery.CurrentChargeRaw
+		out.Battery.Capacity.HardwarePercent = s.IOKit.Battery.HardwareChargePercent
+		out.Battery.Capacity.HardwarePercentPrecise = s.IOKit.Battery.HardwareChargePercentPrecise
+		out.Battery.Capacity.HardwarePercentAvailable = s.IOKit.Battery.HardwareChargeAvailable
 		out.Battery.Capacity.Design = s.IOKit.Battery.DesignCapacity
 		out.Battery.Capacity.Max = s.IOKit.Battery.MaxCapacity
 		out.Battery.Capacity.Nominal = s.IOKit.Battery.NominalCapacity

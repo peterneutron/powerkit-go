@@ -12,6 +12,7 @@ func TestToJSONIncludesSchemaAndSources(t *testing.T) {
 	assertBaseJSONFields(t, &j)
 	assertSourceFields(t, &j)
 	assertHealthAndFirmwareFields(t, &j)
+	assertHardwareChargeFields(t, &j)
 }
 
 func TestToJSONUsesSnakeCaseKeys(t *testing.T) {
@@ -29,6 +30,8 @@ func TestToJSONUsesSnakeCaseKeys(t *testing.T) {
 	assertTopLevelSnakeCaseKeys(t, decoded)
 	osPayload := assertOSPayload(t, decoded)
 	assertOSFirmwareJSONKeys(t, osPayload)
+	batteryPayload := assertBatteryPayload(t, decoded)
+	assertBatteryCapacityJSONKeys(t, batteryPayload)
 }
 
 func assertBaseJSONFields(t *testing.T, j *SystemInfoJSON) {
@@ -79,6 +82,22 @@ func assertHealthAndFirmwareFields(t *testing.T, j *SystemInfoJSON) {
 	}
 }
 
+func assertHardwareChargeFields(t *testing.T, j *SystemInfoJSON) {
+	t.Helper()
+	if !j.Battery.Capacity.HardwarePercentAvailable {
+		t.Fatalf("expected hardware_percent_available")
+	}
+	if j.Battery.Capacity.HardwarePercent != 79 {
+		t.Fatalf("hardware_percent = %d, want 79", j.Battery.Capacity.HardwarePercent)
+	}
+	if j.Battery.Capacity.HardwarePercentPrecise != 80 {
+		t.Fatalf("hardware_percent_precise = %.2f, want 80.00", j.Battery.Capacity.HardwarePercentPrecise)
+	}
+	if j.Battery.Capacity.CurrentRaw != 79 {
+		t.Fatalf("current_raw = %d, want legacy raw StateOfCharge 79", j.Battery.Capacity.CurrentRaw)
+	}
+}
+
 func assertTopLevelSnakeCaseKeys(t *testing.T, decoded map[string]any) {
 	t.Helper()
 	required := []string{"schema_version", "collected_at", "os", "battery", "adapter", "power", "controls", "sources"}
@@ -99,6 +118,35 @@ func assertOSPayload(t *testing.T, decoded map[string]any) map[string]any {
 		t.Fatalf("expected os payload to be object")
 	}
 	return osPayload
+}
+
+func assertBatteryPayload(t *testing.T, decoded map[string]any) map[string]any {
+	t.Helper()
+	batteryPayload, ok := decoded["battery"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected battery payload to be object")
+	}
+	return batteryPayload
+}
+
+func assertBatteryCapacityJSONKeys(t *testing.T, batteryPayload map[string]any) {
+	t.Helper()
+	capacityPayload, ok := batteryPayload["capacity"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected battery.capacity payload to be object")
+	}
+	required := []string{
+		"current_percent",
+		"current_raw",
+		"hardware_percent",
+		"hardware_percent_precise",
+		"hardware_percent_available",
+	}
+	for _, key := range required {
+		if _, ok := capacityPayload[key]; !ok {
+			t.Fatalf("expected battery.capacity.%s key", key)
+		}
+	}
 }
 
 func assertOSFirmwareJSONKeys(t *testing.T, osPayload map[string]any) {

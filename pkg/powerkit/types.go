@@ -122,21 +122,24 @@ type IOKitState struct {
 
 // IOKitBattery contains all data points related to the battery itself, as reported by IOKit.
 type IOKitBattery struct {
-	SerialNumber           string  `json:"SerialNumber"`
-	DeviceName             string  `json:"DeviceName"`
-	CycleCount             int     `json:"CycleCount"`
-	DesignCapacity         int     `json:"DesignCapacity"`
-	MaxCapacity            int     `json:"MaxCapacity"`
-	NominalCapacity        int     `json:"NominalCapacity"`
-	CurrentCapacityRaw     int     `json:"CurrentCapacityRaw"`
-	TimeToEmpty            int     `json:"TimeToEmpty"`
-	TimeToFull             int     `json:"TimeToFull"`
-	Temperature            float64 `json:"Temperature"`
-	Voltage                float64 `json:"Voltage"`
-	Amperage               float64 `json:"Amperage"`
-	CurrentCharge          int     `json:"CurrentCharge"`
-	CurrentChargeRaw       int     `json:"CurrentChargeRaw"`
-	IndividualCellVoltages []int   `json:"IndividualCellVoltages"`
+	SerialNumber                 string  `json:"SerialNumber"`
+	DeviceName                   string  `json:"DeviceName"`
+	CycleCount                   int     `json:"CycleCount"`
+	DesignCapacity               int     `json:"DesignCapacity"`
+	MaxCapacity                  int     `json:"MaxCapacity"`
+	NominalCapacity              int     `json:"NominalCapacity"`
+	CurrentCapacityRaw           int     `json:"CurrentCapacityRaw"`
+	TimeToEmpty                  int     `json:"TimeToEmpty"`
+	TimeToFull                   int     `json:"TimeToFull"`
+	Temperature                  float64 `json:"Temperature"`
+	Voltage                      float64 `json:"Voltage"`
+	Amperage                     float64 `json:"Amperage"`
+	CurrentCharge                int     `json:"CurrentCharge"`
+	CurrentChargeRaw             int     `json:"CurrentChargeRaw"`
+	HardwareChargePercent        int     `json:"HardwareChargePercent"`
+	HardwareChargePercentPrecise float64 `json:"HardwareChargePercentPrecise"`
+	HardwareChargeAvailable      bool    `json:"HardwareChargeAvailable"`
+	IndividualCellVoltages       []int   `json:"IndividualCellVoltages"`
 }
 
 // IOKitAdapter contains all data points related to the adapter, as reported by IOKit.

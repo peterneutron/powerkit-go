@@ -68,7 +68,7 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 			MaxCapacity:        7500,
 			NominalCapacity:    7200,
 			CurrentCharge:      80,
-			CurrentChargeRaw:   800,
+			CurrentChargeRaw:   79,
 			CurrentCapacityRaw: 6000,
 			TimeToEmpty:        90,
 			TimeToFull:         45,
@@ -151,6 +151,43 @@ func TestGetSystemInfoConvertsSmartBatteryTemperature(t *testing.T) {
 	info, _ := setupSystemInfoFixture(t)
 	if got := info.IOKit.Battery.Temperature; got != 32.95 {
 		t.Fatalf("expected IOKit battery temperature 32.95, got %.2f", got)
+	}
+}
+
+func TestGetSystemInfoExposesHardwareChargePercent(t *testing.T) {
+	info, _ := setupSystemInfoFixture(t)
+	battery := info.IOKit.Battery
+	if !battery.HardwareChargeAvailable {
+		t.Fatal("expected hardware charge percentage to be available")
+	}
+	if got := battery.HardwareChargePercent; got != 79 {
+		t.Fatalf("expected hardware charge percent 79, got %d", got)
+	}
+	if got := battery.HardwareChargePercentPrecise; got != 80 {
+		t.Fatalf("expected precise hardware charge percent 80.00, got %.2f", got)
+	}
+}
+
+func TestHardwareChargePercentFallsBackToRawCapacityRatio(t *testing.T) {
+	percent, precise, available := hardwareChargePercent(0, 4631, 7225)
+	if !available {
+		t.Fatal("expected hardware charge percentage to be available")
+	}
+	if percent != 64 {
+		t.Fatalf("expected rounded hardware charge percent 64, got %d", percent)
+	}
+	if precise != 64.09 {
+		t.Fatalf("expected precise hardware charge percent 64.09, got %.2f", precise)
+	}
+}
+
+func TestHardwareChargePercentTreatsMissingRawValuesAsUnavailable(t *testing.T) {
+	percent, precise, available := hardwareChargePercent(0, 0, 0)
+	if available {
+		t.Fatal("expected hardware charge percentage to be unavailable")
+	}
+	if percent != 0 || precise != 0 {
+		t.Fatalf("expected zero values when unavailable, got percent=%d precise=%.2f", percent, precise)
 	}
 }
 
