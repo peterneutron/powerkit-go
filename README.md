@@ -61,6 +61,7 @@ Core entrypoints:
 - `GetSystemInfoContext(ctx context.Context, opts ...FetchOptions) (*SystemInfo, error)`
 - `StreamSystemEvents() (<-chan SystemEvent, error)`
 - `StreamSystemEventsWithHooks(StreamHooks) (<-chan SystemEvent, error)`
+- `StreamSystemEventsContext(context.Context, StreamHooks) (<-chan SystemEvent, error)`
 - `GetRawSMCValues(keys []string) (map[string]RawSMCValue, error)`
 
 Control APIs:
@@ -83,6 +84,7 @@ Sleep assertions:
 `StreamSystemEventsWithHooks` supports a synchronous `BeforeSleep` hook.
 
 Use it only for short, bounded pre-sleep work. macOS sleep acknowledgement waits for that hook to return.
+Use `StreamSystemEventsContext` when the caller needs to cancel the stream and release the singleton hook registration.
 
 ## Privileges
 

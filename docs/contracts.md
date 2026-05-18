@@ -13,6 +13,7 @@ Primary package: `github.com/peterneutron/powerkit-go/pkg/powerkit`
 - `GetRawSMCValues(keys []string) (map[string]RawSMCValue, error)`
 - `StreamSystemEvents() (<-chan SystemEvent, error)`
 - `StreamSystemEventsWithHooks(StreamHooks) (<-chan SystemEvent, error)`
+- `StreamSystemEventsContext(context.Context, StreamHooks) (<-chan SystemEvent, error)`
 - `(*SystemInfo).ToJSON() SystemInfoJSON`
 
 ### Control APIs

@@ -3,6 +3,7 @@
 package powerkit
 
 import (
+	"context"
 	"errors"
 	"log"
 	"reflect"
@@ -39,6 +40,19 @@ func StreamSystemEvents() (<-chan SystemEvent, error) {
 // StreamSystemEventsWithHooks starts the singleton system event stream and
 // installs synchronous lifecycle hooks such as BeforeSleep.
 func StreamSystemEventsWithHooks(hooks StreamHooks) (<-chan SystemEvent, error) {
+	return StreamSystemEventsContext(context.Background(), hooks)
+}
+
+// StreamSystemEventsContext starts the singleton system event stream and releases
+// the stream registration when ctx is canceled.
+func StreamSystemEventsContext(ctx context.Context, hooks StreamHooks) (<-chan SystemEvent, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	streamMu.Lock()
 	defer streamMu.Unlock()
 
@@ -58,7 +72,18 @@ func StreamSystemEventsWithHooks(hooks StreamHooks) (<-chan SystemEvent, error) 
 		defer close(systemEventChan)
 		defer releaseStreamRegistration()
 
-		for internalEvent := range source {
+		for {
+			var internalEvent iokit.InternalEvent
+			select {
+			case <-ctx.Done():
+				return
+			case event, ok := <-source:
+				if !ok {
+					return
+				}
+				internalEvent = event
+			}
+
 			publicEvent, ok := translateInternalEvent(internalEvent)
 			if !ok {
 				continue
@@ -72,7 +97,11 @@ func StreamSystemEventsWithHooks(hooks StreamHooks) (<-chan SystemEvent, error) 
 				continue
 			}
 
-			systemEventChan <- publicEvent
+			select {
+			case systemEventChan <- publicEvent:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}(internalEventSource())
 

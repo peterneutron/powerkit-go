@@ -1,6 +1,7 @@
 package powerkit
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -89,5 +90,59 @@ func TestStreamSystemEventsWithHooksRejectsConflictingRegistration(t *testing.T)
 	close(source)
 	for event := range stream {
 		_ = event
+	}
+}
+
+func TestStreamSystemEventsContextCancelReleasesRegistration(t *testing.T) {
+	oldStartMonitorFn := startMonitorFn
+	oldSetBeforeSleepHookFn := setBeforeSleepHookFn
+	oldInternalEventSource := internalEventSource
+	oldEnqueueInitialBatteryUpdate := enqueueInitialBatteryUpdate
+	resetStreamStateForTest()
+	t.Cleanup(func() {
+		startMonitorFn = oldStartMonitorFn
+		setBeforeSleepHookFn = oldSetBeforeSleepHookFn
+		internalEventSource = oldInternalEventSource
+		enqueueInitialBatteryUpdate = oldEnqueueInitialBatteryUpdate
+		resetStreamStateForTest()
+	})
+
+	source := make(chan iokit.InternalEvent)
+	startMonitorFn = func() {}
+	setBeforeSleepHookFn = func(func()) {}
+	internalEventSource = func() <-chan iokit.InternalEvent { return source }
+	enqueueInitialBatteryUpdate = func() {}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, err := StreamSystemEventsContext(ctx, StreamHooks{BeforeSleep: func() {}})
+	if err != nil {
+		t.Fatalf("stream registration failed: %v", err)
+	}
+	cancel()
+
+	select {
+	case _, ok := <-stream:
+		if ok {
+			t.Fatalf("expected stream channel to close after context cancellation")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for stream channel to close")
+	}
+
+	next, err := StreamSystemEventsWithHooks(StreamHooks{})
+	if err != nil {
+		t.Fatalf("expected registration after cancellation to succeed: %v", err)
+	}
+	close(source)
+	for range next {
+	}
+}
+
+func TestStreamSystemEventsContextCanceledBeforeStart(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if _, err := StreamSystemEventsContext(ctx, StreamHooks{}); err != context.Canceled {
+		t.Fatalf("expected context.Canceled, got %v", err)
 	}
 }
