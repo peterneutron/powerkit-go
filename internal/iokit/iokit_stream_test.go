@@ -74,6 +74,28 @@ func TestProcessWillSleepNotificationRunsHookBeforeAck(t *testing.T) {
 	expectQueuedEventType(t, SystemWillSleep)
 }
 
+func TestProcessWillSleepNotificationAckDoesNotWaitForEventQueue(t *testing.T) {
+	oldEvents := Events
+	oldHook := beforeSleepHook
+	Events = make(chan InternalEvent, 1)
+	beforeSleepHook = nil
+	t.Cleanup(func() {
+		Events = oldEvents
+		beforeSleepHook = oldHook
+	})
+
+	Events <- InternalEvent{Type: BatteryUpdate}
+	ackDone := make(chan struct{})
+
+	processWillSleepNotification(func() {
+		close(ackDone)
+	})
+
+	expectSignalWithin(t, ackDone, time.Second, "sleep acknowledgement waited for event queue space")
+	expectQueuedEventType(t, BatteryUpdate)
+	expectQueuedEventType(t, SystemWillSleep)
+}
+
 func TestPushDidWakeReliableUnderQueuePressureWhileBatteryUpdatesStayLossy(t *testing.T) {
 	oldEvents := Events
 	Events = make(chan InternalEvent, 1)

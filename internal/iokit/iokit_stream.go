@@ -167,9 +167,20 @@ func emitReliable(eventType InternalEventType) {
 	Events <- InternalEvent{Type: eventType}
 }
 
+func emitReliableAsyncOnFull(eventType InternalEventType) {
+	event := InternalEvent{Type: eventType}
+	select {
+	case Events <- event:
+	default:
+		go func() {
+			Events <- event
+		}()
+	}
+}
+
 func processWillSleepNotification(ack func()) {
 	runBeforeSleepHook()
-	emitReliable(SystemWillSleep)
+	emitReliableAsyncOnFull(SystemWillSleep)
 	if ack != nil {
 		ack()
 	}
