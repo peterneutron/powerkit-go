@@ -17,16 +17,24 @@ This repo uses `master` as the trunk and tagged release branch.
    make verify
    ```
 
-3. Prepare concise release notes from the merged commits.
-4. Tag the release on `master`:
+3. For releases touching IOKit, SMC, Low Power Mode, or sleep behavior, capture a
+   current-machine smoke readout:
+
+   ```bash
+   go run ./cmd/powerkit-cli all
+   ```
+
+   Note any OS-specific capability changes in the release notes.
+4. Prepare concise release notes from the merged commits.
+5. Tag the release on `master`:
 
    ```bash
    git tag vX.Y.Z
    ```
 
-5. Push `master` and the new tag.
-6. Publish release notes on the hosting platform for that tag.
-7. If downstream repos pin `powerkit-go`, bump them after the tag exists.
+6. Push `master` and the new tag.
+7. Publish release notes on the hosting platform for that tag.
+8. If downstream repos pin `powerkit-go`, bump them after the tag exists.
 
 ## Versioning Notes
 

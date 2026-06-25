@@ -27,6 +27,17 @@ Primary package: `github.com/peterneutron/powerkit-go/pkg/powerkit`
 - `SetLowPowerMode(enable bool) error`
 - `ToggleLowPowerMode() error`
 
+Charging and adapter state reads expose separate availability flags on
+`SMCState`:
+
+- `ChargingControlAvailable`
+- `AdapterControlAvailable`
+
+When an SMC control key is absent, the corresponding state defaults to enabled
+and the availability flag is false. Consumers must check availability before
+interpreting `IsChargingEnabled == false` as an active limiter or before issuing
+charge-control writes.
+
 Context-aware variants exist for mutating APIs:
 
 - `SetAdapterStateContext`
@@ -111,6 +122,14 @@ Top-level keys:
       "telemetry_available": true
     }
   },
+  "controls": {
+    "smc": {
+      "charging_enabled": true,
+      "adapter_enabled": true,
+      "charging_control_available": true,
+      "adapter_control_available": true
+    }
+  },
   "sources": {
     "adapter_telemetry": {
       "source": "iokit",
@@ -128,6 +147,34 @@ percentage. `battery.capacity.current_raw` is the legacy raw smart-battery
 `hardware_percent` / `hardware_percent_precise` when they need the battery
 management system percentage; `hardware_percent_available` indicates whether
 the raw smart-battery inputs were present.
+
+`controls.smc.charging_control_available` and
+`controls.smc.adapter_control_available` report whether the relevant SMC control
+keys were observed. These fields are capability flags, not user preferences.
+
+## macOS 27 Battery Notes
+
+Observed on macOS 27.0 Developer Beta 2:
+
+- Top-level `AppleSmartBattery` no longer exposes all legacy capacity,
+  temperature, and cell-voltage values. `powerkit-go` preserves old top-level
+  reads when present and fills missing values from nested `AppleSmartBatteryPack`
+  and `AppleSmartBatteryBank` `BatteryData`.
+- The modern SMC charging control key `CHTE` and legacy keys `BCLM`, `BCDS`, and
+  `CH0B` were not available. The adapter control key `CHIE` remained readable.
+- Missing charge-control keys are represented as
+  `ChargingControlAvailable=false` with `IsChargingEnabled=true`, so callers do
+  not confuse missing data with an active charging inhibit.
+- Apple's native manual charge limit path is private. Runtime probing of
+  `PowerUISmartChargeClient` reported available manual charge limits of
+  `80, 85, 90, 95, 100`; attempts to set `60` failed with
+  `PowerUISmartChargingErrorDomain Code=4`.
+- Direct `IOPSCopyBatteryLevelLimits` / `IOPSLimitBatteryLevel*` access is gated
+  by Apple private entitlements such as `com.apple.private.iokit.soc-limit`.
+
+The native PowerUI charge-limit API is not part of the public `powerkit-go`
+contract. Treat it as investigation data until a supported integration boundary
+is chosen.
 
 ## Firmware Profile Model
 

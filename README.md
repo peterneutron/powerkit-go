@@ -7,7 +7,8 @@
 Use `powerkit-go` when you need:
 
 - battery, adapter, and charging telemetry
-- charging and adapter control
+- charging and adapter control where the current macOS build exposes those
+  controls
 - MagSafe LED control
 - Low Power Mode read/write
 - sleep assertion control
@@ -21,6 +22,8 @@ This library targets Apple Silicon Macs. Intel behavior is not guaranteed.
 - Build tag: `//go:build darwin`
 - cgo required
 - Mutating control APIs require root
+- Hardware control availability is reported at runtime; newer macOS builds can
+  remove individual SMC control keys.
 
 ## Install
 
@@ -105,8 +108,11 @@ Use `StreamSystemEventsContext` when the caller needs to cancel the stream and r
 
 - Read telemetry: no root required
 - Sleep assertions: no root required
-- Charging, adapter, MagSafe, and Low Power Mode writes: root required
-- SMC-backed context APIs check cancellation before starting hardware calls; Low Power Mode reads use Foundation, while writes use `pmset` and pass through context cancellation.
+- Charging, adapter, MagSafe, and Low Power Mode writes: root required and
+  subject to runtime hardware/OS availability
+- SMC-backed context APIs check cancellation before starting hardware calls; Low
+  Power Mode reads use Foundation, while writes use `pmset` and pass through
+  context cancellation.
 
 ## Build
 
