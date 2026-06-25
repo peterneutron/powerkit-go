@@ -23,7 +23,10 @@ static char* pg_copy_cstring(NSString *s) {
 }
 
 static id pg_powerui_smart_charge_client(void) {
-	dlopen("/System/Library/PrivateFrameworks/PowerUI.framework/PowerUI", RTLD_LAZY | RTLD_LOCAL);
+	NSBundle *bundle = [NSBundle bundleWithPath:@"/System/Library/PrivateFrameworks/PowerUI.framework"];
+	if (bundle) {
+		[bundle load];
+	}
 
 	Class cls = NSClassFromString(@"PowerUISmartChargeClient");
 	if (!cls) {
@@ -46,7 +49,26 @@ static id pg_powerui_smart_charge_client(void) {
 		}
 	}
 
-	return [[cls alloc] init];
+	id allocated = [cls alloc];
+	SEL clientNameSel = @selector(initWithClientName:);
+	if ([allocated respondsToSelector:clientNameSel]) {
+		id (*send)(id, SEL, NSString *) = (id (*)(id, SEL, NSString *))objc_msgSend;
+		id client = send(allocated, clientNameSel, @"PowerGrid");
+		if (client) {
+			return client;
+		}
+	}
+
+	SEL clientNameEndpointSel = @selector(initWithClientName:listenerEndpoint:);
+	if ([allocated respondsToSelector:clientNameEndpointSel]) {
+		id (*send)(id, SEL, NSString *, id) = (id (*)(id, SEL, NSString *, id))objc_msgSend;
+		id client = send(allocated, clientNameEndpointSel, @"PowerGrid", nil);
+		if (client) {
+			return client;
+		}
+	}
+
+	return [allocated init];
 }
 
 static int pg_powerui_available_charge_limits(int *limits, int max_count, int *writable, char **error_message) {
