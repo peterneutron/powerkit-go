@@ -216,6 +216,7 @@ func buildBatteryUpdateInfo() (*SystemInfo, error) {
 	info.adapterTelemetrySource = string(iokitRawData.TelemetrySource)
 	info.adapterTelemetryReason = string(iokitRawData.TelemetryReason)
 	info.forceTelemetryFallback = iokitRawData.ForceFallback
+	info.Controls.ChargeLimit = resolveChargeLimitCapability(info)
 	calculateDerivedMetrics(info)
 
 	return info, nil

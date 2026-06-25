@@ -51,9 +51,10 @@ type FetchOptions struct {
 // SystemInfo is the new top-level struct that holds all hardware information,
 // cleanly separated by its source (IOKit or SMC).
 type SystemInfo struct {
-	OS    OSInfo     `json:"OS"`
-	IOKit *IOKitData `json:"IOKit,omitempty"`
-	SMC   *SMCData   `json:"SMC,omitempty"`
+	OS       OSInfo       `json:"OS"`
+	Controls ControlsInfo `json:"Controls"`
+	IOKit    *IOKitData   `json:"IOKit,omitempty"`
+	SMC      *SMCData     `json:"SMC,omitempty"`
 
 	collectedAt            time.Time
 	iokitQueried           bool
@@ -101,6 +102,35 @@ type OSInfo struct {
 type LowPowerModeInfo struct {
 	Enabled   bool `json:"Enabled"`
 	Available bool `json:"Available"`
+}
+
+// ControlsInfo describes writable power-control capabilities selected for callers.
+type ControlsInfo struct {
+	ChargeLimit ChargeLimitCapability `json:"ChargeLimit"`
+}
+
+// ChargeLimitBackend identifies the mechanism callers should use for charge limits.
+type ChargeLimitBackend string
+
+const (
+	// ChargeLimitBackendUnavailable indicates no writable charge-limit backend is available.
+	ChargeLimitBackendUnavailable ChargeLimitBackend = "unavailable"
+	// ChargeLimitBackendSMCInhibit indicates percentage limiting must be enforced by SMC charging inhibition.
+	ChargeLimitBackendSMCInhibit ChargeLimitBackend = "smc_inhibit"
+	// ChargeLimitBackendNativeMacOS indicates macOS' native manual charge-limit backend is available.
+	ChargeLimitBackendNativeMacOS ChargeLimitBackend = "native_macos"
+)
+
+// ChargeLimitCapability reports the selected charge-limit backend and its valid range.
+type ChargeLimitCapability struct {
+	Available       bool               `json:"Available"`
+	Writable        bool               `json:"Writable"`
+	Backend         ChargeLimitBackend `json:"Backend"`
+	MinPercent      int                `json:"MinPercent"`
+	MaxPercent      int                `json:"MaxPercent"`
+	StepPercent     int                `json:"StepPercent"`
+	AllowedPercents []int              `json:"AllowedPercents,omitempty"`
+	Reason          string             `json:"Reason,omitempty"`
 }
 
 // --- IOKit-Specific Data Structures ---

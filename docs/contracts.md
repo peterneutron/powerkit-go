@@ -26,6 +26,7 @@ Primary package: `github.com/peterneutron/powerkit-go/pkg/powerkit`
 - `GetLowPowerModeEnabled() (enabled bool, available bool, err error)`
 - `SetLowPowerMode(enable bool) error`
 - `ToggleLowPowerMode() error`
+- `SetChargeLimit(percent int) error`
 
 Charging and adapter state reads expose separate availability flags on
 `SMCState`:
@@ -37,6 +38,19 @@ When an SMC control key is absent, the corresponding state defaults to enabled
 and the availability flag is false. Consumers must check availability before
 interpreting `IsChargingEnabled == false` as an active limiter or before issuing
 charge-control writes.
+
+Charge-limit behavior is exposed separately from the SMC firmware profile through
+`SystemInfo.Controls.ChargeLimit`:
+
+- `Backend`: `native_macos`, `smc_inhibit`, or `unavailable`
+- `Available` / `Writable`
+- `MinPercent`, `MaxPercent`, `StepPercent`
+- `AllowedPercents` when the backend exposes a discrete set
+
+`smc_inhibit` means callers must enforce the requested percentage by toggling
+SMC charging state with `SetChargingState`; its step is a UI hint, not a hard
+validation set. `native_macos` means callers may use `SetChargeLimit` directly
+and must honor the returned allowed values.
 
 Context-aware variants exist for mutating APIs:
 
@@ -128,6 +142,15 @@ Top-level keys:
       "adapter_enabled": true,
       "charging_control_available": true,
       "adapter_control_available": true
+    },
+    "charge_limit": {
+      "available": true,
+      "writable": true,
+      "backend": "smc_inhibit",
+      "min_percent": 60,
+      "max_percent": 100,
+      "step_percent": 10,
+      "reason": "smc_control"
     }
   },
   "sources": {
@@ -151,6 +174,7 @@ the raw smart-battery inputs were present.
 `controls.smc.charging_control_available` and
 `controls.smc.adapter_control_available` report whether the relevant SMC control
 keys were observed. These fields are capability flags, not user preferences.
+`controls.charge_limit` reports the selected charge-limit backend and range.
 
 ## macOS 27 Battery Notes
 
@@ -168,13 +192,10 @@ Observed on macOS 27.0 Developer Beta 2:
 - Apple's native manual charge limit path is private. Runtime probing of
   `PowerUISmartChargeClient` reported available manual charge limits of
   `80, 85, 90, 95, 100`; attempts to set `60` failed with
-  `PowerUISmartChargingErrorDomain Code=4`.
+  `PowerUISmartChargingErrorDomain Code=4`. `powerkit-go` models this as the
+  `native_macos` charge-limit backend when the runtime probe succeeds.
 - Direct `IOPSCopyBatteryLevelLimits` / `IOPSLimitBatteryLevel*` access is gated
   by Apple private entitlements such as `com.apple.private.iokit.soc-limit`.
-
-The native PowerUI charge-limit API is not part of the public `powerkit-go`
-contract. Treat it as investigation data until a supported integration boundary
-is chosen.
 
 ## Firmware Profile Model
 

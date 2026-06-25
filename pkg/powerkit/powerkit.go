@@ -13,6 +13,7 @@ var (
 	globalSleepStatusFn = powerd.GlobalSleepStatus
 	powerdIsActiveFn    = powerd.IsActive
 	getLowPowerModeFn   = sysos.GetLowPowerModeEnabled
+	getOSMajorVersionFn = sysos.GetMajorVersion
 )
 
 // GetSystemInfo is the primary entrypoint to the library.
@@ -66,6 +67,7 @@ func GetSystemInfo(opts ...FetchOptions) (*SystemInfo, error) {
 	if options.QuerySMC {
 		getSMCInfo(info)
 	}
+	info.Controls.ChargeLimit = resolveChargeLimitCapability(info)
 
 	// Final check: if both failed, we have nothing to return.
 	if info.IOKit == nil && info.SMC == nil {

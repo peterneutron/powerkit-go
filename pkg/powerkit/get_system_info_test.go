@@ -18,6 +18,9 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 	oldGlobalSleep := globalSleepStatusFn
 	oldPowerdActive := powerdIsActiveFn
 	oldGetLPM := getLowPowerModeFn
+	oldGetOSMajor := getOSMajorVersionFn
+	oldNativeProbe := nativeChargeLimitProbeFn
+	oldSetNativeChargeLimit := setNativeChargeLimitFn
 	oldConfig := currentSMCConfig
 	oldFirmwareInfo := currentFirmwareInfo
 
@@ -28,6 +31,9 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 		globalSleepStatusFn = oldGlobalSleep
 		powerdIsActiveFn = oldPowerdActive
 		getLowPowerModeFn = oldGetLPM
+		getOSMajorVersionFn = oldGetOSMajor
+		nativeChargeLimitProbeFn = oldNativeProbe
+		setNativeChargeLimitFn = oldSetNativeChargeLimit
 		currentSMCConfig = oldConfig
 		currentFirmwareInfo = oldFirmwareInfo
 	})
@@ -110,6 +116,16 @@ func setupSystemInfoFixture(t *testing.T) (*SystemInfo, bool) {
 	getLowPowerModeFn = func() (bool, bool, error) {
 		return true, true, nil
 	}
+	getOSMajorVersionFn = func() int {
+		return 26
+	}
+	nativeChargeLimitProbeFn = func() nativeChargeLimitProbeResult {
+		return nativeChargeLimitProbeResult{Reason: chargeLimitReasonNativeUnavailable}
+	}
+	setNativeChargeLimitFn = func(int) error {
+		t.Fatal("unexpected native charge limit write")
+		return nil
+	}
 
 	info, err := GetSystemInfo(FetchOptions{QueryIOKit: true, QuerySMC: true, ForceTelemetryFallback: true})
 	if err != nil {
@@ -175,6 +191,77 @@ func TestGetSystemInfoExposesSMCControlAvailability(t *testing.T) {
 	}
 	if !info.SMC.State.AdapterControlAvailable {
 		t.Fatal("expected adapter control to be marked available")
+	}
+}
+
+func TestGetSystemInfoExposesSMCChargeLimitCapability(t *testing.T) {
+	info, _ := setupSystemInfoFixture(t)
+	capability := info.Controls.ChargeLimit
+	if !capability.Available || !capability.Writable {
+		t.Fatalf("expected writable charge-limit capability, got %+v", capability)
+	}
+	if capability.Backend != ChargeLimitBackendSMCInhibit {
+		t.Fatalf("backend = %q, want %q", capability.Backend, ChargeLimitBackendSMCInhibit)
+	}
+	if capability.MinPercent != 60 || capability.MaxPercent != 100 || capability.StepPercent != 10 {
+		t.Fatalf("unexpected SMC charge-limit range: %+v", capability)
+	}
+	if !capability.Allows(60) || !capability.Allows(80) || !capability.Allows(100) {
+		t.Fatalf("expected SMC charge-limit capability to allow 60, 80, and 100: %+v", capability)
+	}
+	if !capability.Allows(65) {
+		t.Fatalf("expected SMC charge-limit capability to allow integer values inside range: %+v", capability)
+	}
+}
+
+func TestGetSystemInfoPrefersNativeMacOSChargeLimitCapability(t *testing.T) {
+	info, _ := setupSystemInfoFixture(t)
+	getOSMajorVersionFn = func() int { return 27 }
+	nativeChargeLimitProbeFn = func() nativeChargeLimitProbeResult {
+		return nativeChargeLimitProbeResult{
+			Available:       true,
+			Writable:        true,
+			AllowedPercents: []int{100, 80, 95, 85, 90},
+		}
+	}
+
+	info.Controls.ChargeLimit = resolveChargeLimitCapability(info)
+	capability := info.Controls.ChargeLimit
+	if capability.Backend != ChargeLimitBackendNativeMacOS {
+		t.Fatalf("backend = %q, want %q", capability.Backend, ChargeLimitBackendNativeMacOS)
+	}
+	if capability.MinPercent != 80 || capability.MaxPercent != 100 || capability.StepPercent != 5 {
+		t.Fatalf("unexpected native charge-limit range: %+v", capability)
+	}
+	if !capability.Allows(85) || capability.Allows(60) {
+		t.Fatalf("unexpected native allowed-values behavior: %+v", capability)
+	}
+}
+
+func TestSetChargeLimitUsesNativeBackend(t *testing.T) {
+	setupSystemInfoFixture(t)
+	getOSMajorVersionFn = func() int { return 27 }
+	nativeChargeLimitProbeFn = func() nativeChargeLimitProbeResult {
+		return nativeChargeLimitProbeResult{
+			Available:       true,
+			Writable:        true,
+			AllowedPercents: []int{80, 85, 90, 95, 100},
+		}
+	}
+
+	var got int
+	setNativeChargeLimitFn = func(percent int) error {
+		got = percent
+		return nil
+	}
+	if err := SetChargeLimit(85); err != nil {
+		t.Fatalf("SetChargeLimit returned error: %v", err)
+	}
+	if got != 85 {
+		t.Fatalf("native set percent = %d, want 85", got)
+	}
+	if err := SetChargeLimit(60); err == nil {
+		t.Fatal("expected disallowed native charge limit to fail")
 	}
 }
 

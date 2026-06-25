@@ -14,6 +14,7 @@ func TestToJSONIncludesSchemaAndSources(t *testing.T) {
 	assertHealthAndFirmwareFields(t, &j)
 	assertHardwareChargeFields(t, &j)
 	assertSMCControlFields(t, &j)
+	assertChargeLimitFields(t, &j)
 }
 
 func TestToJSONUsesSnakeCaseKeys(t *testing.T) {
@@ -112,6 +113,22 @@ func assertSMCControlFields(t *testing.T, j *SystemInfoJSON) {
 	}
 	if !j.Controls.SMC.AdapterEnabled {
 		t.Fatalf("expected adapter_enabled")
+	}
+}
+
+func assertChargeLimitFields(t *testing.T, j *SystemInfoJSON) {
+	t.Helper()
+	if !j.Controls.ChargeLimit.Available {
+		t.Fatalf("expected charge_limit.available")
+	}
+	if !j.Controls.ChargeLimit.Writable {
+		t.Fatalf("expected charge_limit.writable")
+	}
+	if j.Controls.ChargeLimit.Backend != string(ChargeLimitBackendSMCInhibit) {
+		t.Fatalf("charge_limit.backend = %q, want %q", j.Controls.ChargeLimit.Backend, ChargeLimitBackendSMCInhibit)
+	}
+	if j.Controls.ChargeLimit.MinPercent != 60 || j.Controls.ChargeLimit.MaxPercent != 100 || j.Controls.ChargeLimit.StepPercent != 10 {
+		t.Fatalf("unexpected charge_limit range: %+v", j.Controls.ChargeLimit)
 	}
 }
 

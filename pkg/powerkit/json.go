@@ -138,8 +138,9 @@ type PowerJSON struct {
 
 // ControlsJSON contains writable control state and capability flags.
 type ControlsJSON struct {
-	SMC          ControlsSMCJSON          `json:"smc"`
-	Capabilities ControlsCapabilitiesJSON `json:"capabilities"`
+	SMC          ControlsSMCJSON           `json:"smc"`
+	ChargeLimit  ChargeLimitCapabilityJSON `json:"charge_limit"`
+	Capabilities ControlsCapabilitiesJSON  `json:"capabilities"`
 }
 
 // ControlsSMCJSON reports writable SMC state as observed by the library.
@@ -155,6 +156,18 @@ type ControlsCapabilitiesJSON struct {
 	CanQueryIOKit bool `json:"can_query_iokit"`
 	CanQuerySMC   bool `json:"can_query_smc"`
 	CanWriteSMC   bool `json:"can_write_smc"`
+}
+
+// ChargeLimitCapabilityJSON reports the selected charge-limit backend and range.
+type ChargeLimitCapabilityJSON struct {
+	Available       bool   `json:"available"`
+	Writable        bool   `json:"writable"`
+	Backend         string `json:"backend"`
+	MinPercent      int    `json:"min_percent"`
+	MaxPercent      int    `json:"max_percent"`
+	StepPercent     int    `json:"step_percent"`
+	AllowedPercents []int  `json:"allowed_percents,omitempty"`
+	Reason          string `json:"reason,omitempty"`
 }
 
 // SourcesJSON records source availability and telemetry provenance.
@@ -225,6 +238,16 @@ func (s *SystemInfo) ToJSON() SystemInfoJSON {
 			},
 		},
 		Controls: ControlsJSON{
+			ChargeLimit: ChargeLimitCapabilityJSON{
+				Available:       s.Controls.ChargeLimit.Available,
+				Writable:        s.Controls.ChargeLimit.Writable,
+				Backend:         string(s.Controls.ChargeLimit.Backend),
+				MinPercent:      s.Controls.ChargeLimit.MinPercent,
+				MaxPercent:      s.Controls.ChargeLimit.MaxPercent,
+				StepPercent:     s.Controls.ChargeLimit.StepPercent,
+				AllowedPercents: append([]int(nil), s.Controls.ChargeLimit.AllowedPercents...),
+				Reason:          s.Controls.ChargeLimit.Reason,
+			},
 			Capabilities: ControlsCapabilitiesJSON{
 				CanQueryIOKit: true,
 				CanQuerySMC:   true,
