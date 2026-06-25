@@ -144,8 +144,10 @@ type ControlsJSON struct {
 
 // ControlsSMCJSON reports writable SMC state as observed by the library.
 type ControlsSMCJSON struct {
-	ChargingEnabled bool `json:"charging_enabled"`
-	AdapterEnabled  bool `json:"adapter_enabled"`
+	ChargingEnabled          bool `json:"charging_enabled"`
+	AdapterEnabled           bool `json:"adapter_enabled"`
+	ChargingControlAvailable bool `json:"charging_control_available"`
+	AdapterControlAvailable  bool `json:"adapter_control_available"`
 }
 
 // ControlsCapabilitiesJSON reports what query/write capabilities are available.
@@ -275,6 +277,8 @@ func (s *SystemInfo) ToJSON() SystemInfoJSON {
 	if s.SMC != nil {
 		out.Controls.SMC.ChargingEnabled = s.SMC.State.IsChargingEnabled
 		out.Controls.SMC.AdapterEnabled = s.SMC.State.IsAdapterEnabled
+		out.Controls.SMC.ChargingControlAvailable = s.SMC.State.ChargingControlAvailable
+		out.Controls.SMC.AdapterControlAvailable = s.SMC.State.AdapterControlAvailable
 		// Prefer SMC-derived power when available to expose fallback-consistent values.
 		out.Power.AdapterW = s.SMC.Calculations.AdapterPower
 		out.Power.BatteryW = s.SMC.Calculations.BatteryPower

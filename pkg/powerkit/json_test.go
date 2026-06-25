@@ -13,6 +13,7 @@ func TestToJSONIncludesSchemaAndSources(t *testing.T) {
 	assertSourceFields(t, &j)
 	assertHealthAndFirmwareFields(t, &j)
 	assertHardwareChargeFields(t, &j)
+	assertSMCControlFields(t, &j)
 }
 
 func TestToJSONUsesSnakeCaseKeys(t *testing.T) {
@@ -95,6 +96,22 @@ func assertHardwareChargeFields(t *testing.T, j *SystemInfoJSON) {
 	}
 	if j.Battery.Capacity.CurrentRaw != 79 {
 		t.Fatalf("current_raw = %d, want legacy raw StateOfCharge 79", j.Battery.Capacity.CurrentRaw)
+	}
+}
+
+func assertSMCControlFields(t *testing.T, j *SystemInfoJSON) {
+	t.Helper()
+	if !j.Controls.SMC.ChargingControlAvailable {
+		t.Fatalf("expected charging_control_available")
+	}
+	if !j.Controls.SMC.AdapterControlAvailable {
+		t.Fatalf("expected adapter_control_available")
+	}
+	if !j.Controls.SMC.ChargingEnabled {
+		t.Fatalf("expected charging_enabled")
+	}
+	if !j.Controls.SMC.AdapterEnabled {
+		t.Fatalf("expected adapter_enabled")
 	}
 }
 

@@ -191,8 +191,10 @@ type SMCData struct {
 
 // SMCState holds booleans describing the adapter and charging enable/disable state.
 type SMCState struct {
-	IsChargingEnabled bool `json:"IsChargingEnabled"` // was IsChargingEnabled
-	IsAdapterEnabled  bool `json:"IsAdapterEnabled"`  // was IsAdapterEnabled
+	IsChargingEnabled        bool `json:"IsChargingEnabled"`
+	IsAdapterEnabled         bool `json:"IsAdapterEnabled"`
+	ChargingControlAvailable bool `json:"ChargingControlAvailable"`
+	AdapterControlAvailable  bool `json:"AdapterControlAvailable"`
 }
 
 // SMCBattery holds raw battery-related sensor readings from the SMC.

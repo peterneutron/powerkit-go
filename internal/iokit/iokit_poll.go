@@ -113,6 +113,92 @@ static void get_long_array_prop(CFDictionaryRef dict, const char *key, long *out
     }
 }
 
+static long centi_celsius_to_deci_kelvin(long value) {
+    double celsius = (double)value / 100.0;
+    return (long)((celsius + 273.15) * 10.0 + 0.5);
+}
+
+static void fill_battery_info_from_data(c_battery_info *info, CFDictionaryRef battery_data, int temperature_is_centi_celsius) {
+    if (battery_data == NULL) return;
+
+    long value = 0;
+    if (info->design_capacity <= 0) {
+        value = get_long_prop(battery_data, "DesignCapacity");
+        if (value > 0) info->design_capacity = value;
+    }
+    if (info->nominal_capacity <= 0) {
+        value = get_long_prop(battery_data, "NominalChargeCapacity");
+        if (value > 0) info->nominal_capacity = value;
+    }
+    if (info->max_capacity <= 0) {
+        value = get_long_prop(battery_data, "AppleRawMaxCapacity");
+        if (value <= 0) value = get_long_prop(battery_data, "FullChargeCapacity");
+        if (value > 0) info->max_capacity = value;
+    }
+    if (info->current_capacity_raw <= 0) {
+        value = get_long_prop(battery_data, "AppleRawCurrentCapacity");
+        if (value <= 0) value = get_long_prop(battery_data, "RemainingCapacity");
+        if (value > 0) info->current_capacity_raw = value;
+    }
+    if (info->current_charge_raw <= 0) {
+        value = get_long_prop(battery_data, "StateOfCharge");
+        if (value > 0) info->current_charge_raw = value;
+    }
+    if (info->temperature <= 0) {
+        value = get_long_prop(battery_data, "Temperature");
+        if (value <= 0) value = get_long_prop(battery_data, "VirtualTemperature");
+        if (value > 0) {
+            info->temperature = temperature_is_centi_celsius ? centi_celsius_to_deci_kelvin(value) : value;
+        }
+    }
+    if (info->cycle_count <= 0) {
+        value = get_long_prop(battery_data, "CycleCount");
+        if (value > 0) info->cycle_count = value;
+    }
+}
+
+static void append_cell_voltage_from_data(c_battery_info *info, CFDictionaryRef battery_data) {
+    if (battery_data == NULL || info->cell_voltage_count >= 16) return;
+
+    long value = get_long_prop(battery_data, "CellVoltage");
+    if (value > 0) {
+        info->cell_voltages[info->cell_voltage_count] = value;
+        info->cell_voltage_count++;
+    }
+}
+
+static void inspect_battery_children(io_registry_entry_t entry, c_battery_info *info, int use_bank_cell_voltage) {
+    io_iterator_t child_iterator = IO_OBJECT_NULL;
+    if (IORegistryEntryGetChildIterator(entry, kIOServicePlane, &child_iterator) != KERN_SUCCESS) {
+        return;
+    }
+
+    io_registry_entry_t child = IO_OBJECT_NULL;
+    while ((child = IOIteratorNext(child_iterator)) != IO_OBJECT_NULL) {
+        io_name_t class_name;
+        class_name[0] = '\0';
+        IOObjectGetClass(child, class_name);
+
+        CFMutableDictionaryRef child_properties = NULL;
+        if (IORegistryEntryCreateCFProperties(child, &child_properties, kCFAllocatorDefault, 0) == KERN_SUCCESS && child_properties != NULL) {
+            CFDictionaryRef battery_data = get_dict_prop(child_properties, "BatteryData");
+            if (battery_data != NULL) {
+                if (strcmp(class_name, "AppleSmartBatteryPack") == 0) {
+                    fill_battery_info_from_data(info, battery_data, 1);
+                } else if (use_bank_cell_voltage && strcmp(class_name, "AppleSmartBatteryBank") == 0) {
+                    append_cell_voltage_from_data(info, battery_data);
+                }
+            }
+            CFRelease(child_properties);
+        }
+
+        inspect_battery_children(child, info, use_bank_cell_voltage);
+        IOObjectRelease(child);
+    }
+
+    IOObjectRelease(child_iterator);
+}
+
 int get_all_battery_info(c_battery_info *info) {
     CFMutableDictionaryRef matching = IOServiceMatching("AppleSmartBattery");
     if (matching == NULL) return 1;
@@ -125,8 +211,10 @@ int get_all_battery_info(c_battery_info *info) {
     if (battery == IO_OBJECT_NULL) return 3;
     CFMutableDictionaryRef properties = NULL;
     kern_return_t result = IORegistryEntryCreateCFProperties(battery, &properties, kCFAllocatorDefault, 0);
-    IOObjectRelease(battery);
-    if (result != KERN_SUCCESS || properties == NULL) return 4;
+    if (result != KERN_SUCCESS || properties == NULL) {
+        IOObjectRelease(battery);
+        return 4;
+    }
     info->is_charging = get_bool_prop(properties, "IsCharging");
     info->is_connected = get_bool_prop(properties, "ExternalConnected");
     info->is_fully_charged = get_bool_prop(properties, "FullyCharged");
@@ -161,6 +249,7 @@ int get_all_battery_info(c_battery_info *info) {
     CFDictionaryRef battery_data = get_dict_prop(properties, "BatteryData");
     if (battery_data) {
         get_long_array_prop(battery_data, "CellVoltage", info->cell_voltages, 16, &info->cell_voltage_count);
+        fill_battery_info_from_data(info, battery_data, 0);
     }
     CFDictionaryRef battery_data_dict = get_dict_prop(properties, "BatteryData");
     if (battery_data_dict != NULL) {
@@ -168,7 +257,10 @@ int get_all_battery_info(c_battery_info *info) {
     } else {
         info->current_charge_raw = 0;
     }
+    int use_bank_cell_voltage = info->cell_voltage_count == 0;
+    inspect_battery_children(battery, info, use_bank_cell_voltage);
     CFRelease(properties);
+    IOObjectRelease(battery);
     return 0;
 }
 */

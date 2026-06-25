@@ -14,7 +14,10 @@ import (
 // into the public SMCData struct.
 func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSMCValue) *SMCData {
 	data := &SMCData{
-		State:   SMCState{},
+		State: SMCState{
+			IsChargingEnabled: true,
+			IsAdapterEnabled:  true,
+		},
 		Battery: SMCBattery{},
 		Adapter: SMCAdapter{},
 	}
@@ -34,28 +37,32 @@ func newSMCData(floatResults map[string]float64, rawResults map[string]smc.RawSM
 
 	// --- Populate the State struct from the rawResults, respecting OS version ---
 
-	// Check for IsChargingEnabled state
-	var chargingKeyToCheck string
+	// Check for IsChargingEnabled state.
+	var chargingKeysToCheck []string
 	if currentSMCConfig.IsLegacyCharging {
-		chargingKeyToCheck = smc.KeyIsChargingEnabledLegacyBCLM
+		chargingKeysToCheck = currentSMCConfig.ChargingKeysLegacy
+		if len(chargingKeysToCheck) == 0 {
+			chargingKeysToCheck = []string{smc.KeyIsChargingEnabledLegacyBCLM}
+		}
 	} else {
-		chargingKeyToCheck = smc.KeyIsChargingEnabled
+		chargingKeysToCheck = []string{currentSMCConfig.ChargingKeyModern}
 	}
-	if val, ok := rawResults[chargingKeyToCheck]; ok {
-		// Enabled is the default; we check for the disabled bytes.
-		// A value not equal to the 'disabled' state is considered 'enabled'.
-		if !bytes.Equal(val.Data, currentSMCConfig.ChargingDisableBytes) {
-			data.State.IsChargingEnabled = true
+	for _, key := range chargingKeysToCheck {
+		if val, ok := rawResults[key]; ok {
+			data.State.ChargingControlAvailable = true
+			// Enabled is the default; we check for the disabled bytes.
+			// A value not equal to the 'disabled' state is considered 'enabled'.
+			data.State.IsChargingEnabled = !bytes.Equal(val.Data, currentSMCConfig.ChargingDisableBytes)
+			break
 		}
 	}
 
 	// Check for IsAdapterEnabled state
 	adapterKeyToCheck := currentSMCConfig.AdapterKey
 	if val, ok := rawResults[adapterKeyToCheck]; ok {
+		data.State.AdapterControlAvailable = true
 		// Enabled is the default; we check for the disabled bytes.
-		if !bytes.Equal(val.Data, currentSMCConfig.AdapterDisableBytes) {
-			data.State.IsAdapterEnabled = true
-		}
+		data.State.IsAdapterEnabled = !bytes.Equal(val.Data, currentSMCConfig.AdapterDisableBytes)
 	}
 
 	return data

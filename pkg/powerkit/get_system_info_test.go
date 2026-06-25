@@ -168,6 +168,43 @@ func TestGetSystemInfoExposesHardwareChargePercent(t *testing.T) {
 	}
 }
 
+func TestGetSystemInfoExposesSMCControlAvailability(t *testing.T) {
+	info, _ := setupSystemInfoFixture(t)
+	if !info.SMC.State.ChargingControlAvailable {
+		t.Fatal("expected charging control to be marked available")
+	}
+	if !info.SMC.State.AdapterControlAvailable {
+		t.Fatal("expected adapter control to be marked available")
+	}
+}
+
+func TestNewSMCDataDefaultsMissingControlKeysToEnabledUnavailable(t *testing.T) {
+	oldConfig := currentSMCConfig
+	t.Cleanup(func() { currentSMCConfig = oldConfig })
+
+	currentSMCConfig = smcControlConfig{
+		AdapterKey:           smc.KeyIsAdapterEnabled,
+		AdapterDisableBytes:  []byte{0x08},
+		IsLegacyCharging:     false,
+		ChargingKeyModern:    smc.KeyIsChargingEnabled,
+		ChargingDisableBytes: []byte{0x01, 0x00, 0x00, 0x00},
+	}
+
+	data := newSMCData(nil, map[string]smc.RawSMCValue{})
+	if !data.State.IsChargingEnabled {
+		t.Fatal("expected missing charging control key to default to enabled")
+	}
+	if data.State.ChargingControlAvailable {
+		t.Fatal("expected missing charging control key to be marked unavailable")
+	}
+	if !data.State.IsAdapterEnabled {
+		t.Fatal("expected missing adapter control key to default to enabled")
+	}
+	if data.State.AdapterControlAvailable {
+		t.Fatal("expected missing adapter control key to be marked unavailable")
+	}
+}
+
 func TestHardwareChargePercentFallsBackToRawCapacityRatio(t *testing.T) {
 	percent, precise, available := hardwareChargePercent(0, 4631, 7225)
 	if !available {
