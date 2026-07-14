@@ -15,6 +15,7 @@
 .vscode/
 .idea/
 .cache/
+.tmp/
 
 # Compiled binaries
 build/
